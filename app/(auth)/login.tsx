@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { LogIn, Mail, Lock, Eye, EyeOff, Sparkles, User } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,6 +25,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const [scaleAnim] = useState(new Animated.Value(0.8));
   const { signIn } = useAuth();
   const router = useRouter();
 
@@ -36,6 +37,11 @@ export default function Login() {
   const getResponsivePadding = (basePadding: number) => {
     const scale = Math.min(width / 375, 1.2);
     return Math.round(basePadding * scale);
+  };
+
+  const getResponsiveValue = (baseValue: number) => {
+    const scale = Math.min(width / 375, height / 812);
+    return Math.round(baseValue * scale);
   };
 
   const handleLogin = async () => {
@@ -59,11 +65,16 @@ export default function Login() {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 1000,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
         duration: 800,
         useNativeDriver: true,
       })
@@ -75,41 +86,62 @@ export default function Login() {
       flex: 1,
       backgroundColor: '#141414',
     },
+    backgroundGradient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: '#141414',
+    },
     scrollContent: {
       flexGrow: 1,
       justifyContent: 'center',
       padding: getResponsivePadding(24),
-      paddingTop: height * 0.1,
+      paddingTop: height * 0.08,
     },
     header: {
       alignItems: 'center',
-      marginBottom: getResponsivePadding(48),
+      marginBottom: getResponsivePadding(40),
+    },
+    logoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: getResponsivePadding(24),
     },
     iconContainer: {
-      width: width * 0.20,
-      height: width * 0.20,
-      borderRadius: width * 0.10,
-      backgroundColor: 'rgba(229, 9, 20, 0.1)',
+      width: getResponsiveValue(80),
+      height: getResponsiveValue(80),
+      borderRadius: getResponsiveValue(40),
+      backgroundColor: 'rgba(229, 9, 20, 0.15)',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: getResponsivePadding(20),
+      marginRight: getResponsivePadding(12),
       borderWidth: 3,
       borderColor: '#E50914',
       shadowColor: '#E50914',
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 12,
-      elevation: 8,
+      shadowOpacity: 0.6,
+      shadowRadius: 16,
+      elevation: 12,
+    },
+    sparkleIcon: {
+      position: 'absolute',
+      top: -getResponsiveValue(10),
+      right: -getResponsiveValue(10),
+    },
+    titleContainer: {
+      alignItems: 'flex-start',
     },
     title: {
-      fontSize: getResponsiveFontSize(32),
+      fontSize: getResponsiveFontSize(36),
       fontWeight: '900',
       color: '#E50914',
-      marginBottom: getResponsivePadding(8),
       textShadowColor: '#E50914',
       textShadowOffset: { width: 0, height: 0 },
-      textShadowRadius: 10,
-      letterSpacing: 1,
+      textShadowRadius: 12,
+      letterSpacing: 1.2,
+      marginBottom: getResponsivePadding(4),
     },
     subtitle: {
       fontSize: getResponsiveFontSize(16),
@@ -118,33 +150,63 @@ export default function Login() {
       textShadowColor: '#00FF87',
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 8,
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
     },
     form: {
       width: '100%',
+      backgroundColor: 'rgba(26, 26, 26, 0.8)',
+      borderRadius: 20,
+      padding: getResponsivePadding(28),
+      borderWidth: 1,
+      borderColor: '#333',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 12,
+    },
+    formTitle: {
+      fontSize: getResponsiveFontSize(20),
+      fontWeight: '700',
+      color: '#FFFFFF',
+      marginBottom: getResponsivePadding(24),
+      textAlign: 'center',
+      textShadowColor: '#FFFFFF',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 4,
     },
     inputGroup: {
-      marginBottom: getResponsivePadding(24),
+      marginBottom: getResponsivePadding(20),
     },
     label: {
       fontSize: getResponsiveFontSize(14),
       fontWeight: '700',
       color: '#00FFFF',
-      marginBottom: getResponsivePadding(12),
+      marginBottom: getResponsivePadding(10),
       textTransform: 'uppercase',
-      letterSpacing: 0.8,
+      letterSpacing: 1,
       textShadowColor: '#00FFFF',
       textShadowOffset: { width: 0, height: 0 },
-      textShadowRadius: 4,
+      textShadowRadius: 6,
     },
     inputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: '#1A1A1A',
       borderWidth: 2,
-      borderColor: '#2A2A2A',
-      borderRadius: 12,
+      borderColor: '#333',
+      borderRadius: 14,
       paddingHorizontal: getResponsivePadding(16),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    inputContainerFocused: {
+      borderColor: '#E50914',
+      shadowColor: '#E50914',
+      shadowOpacity: 0.3,
     },
     input: {
       flex: 1,
@@ -155,29 +217,34 @@ export default function Login() {
       paddingLeft: getResponsivePadding(12),
     },
     inputIcon: {
-      marginRight: getResponsivePadding(8),
+      marginRight: getResponsivePadding(10),
     },
     passwordToggle: {
       padding: getResponsivePadding(8),
+      marginLeft: getResponsivePadding(4),
     },
     button: {
-      backgroundColor: '#E50914',
-      borderRadius: 12,
+      backgroundColor: 'linear-gradient(135deg, #E50914 0%, #FF6B6B 100%)',
+      borderRadius: 14,
       padding: getResponsivePadding(18),
       alignItems: 'center',
-      marginTop: getResponsivePadding(8),
+      marginTop: getResponsivePadding(12),
       borderWidth: 2,
       borderColor: '#FF6B6B',
       shadowColor: '#E50914',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 6,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.5,
+      shadowRadius: 12,
+      elevation: 8,
       flexDirection: 'row',
       justifyContent: 'center',
     },
+    buttonGradient: {
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
     buttonDisabled: {
-      opacity: 0.6,
+      opacity: 0.7,
     },
     buttonText: {
       color: '#FFFFFF',
@@ -187,14 +254,15 @@ export default function Login() {
       textShadowColor: '#000',
       textShadowOffset: { width: 1, height: 1 },
       textShadowRadius: 2,
+      letterSpacing: 0.5,
     },
     footer: {
       flexDirection: 'row',
       justifyContent: 'center',
-      marginTop: getResponsivePadding(32),
+      marginTop: getResponsivePadding(28),
       paddingTop: getResponsivePadding(20),
       borderTopWidth: 1,
-      borderTopColor: '#2A2A2A',
+      borderTopColor: '#333',
     },
     footerText: {
       fontSize: getResponsiveFontSize(14),
@@ -205,10 +273,39 @@ export default function Login() {
       fontSize: getResponsiveFontSize(14),
       color: '#00FFFF',
       fontWeight: '700',
-      marginLeft: getResponsivePadding(4),
+      marginLeft: getResponsivePadding(6),
       textShadowColor: '#00FFFF',
       textShadowOffset: { width: 0, height: 0 },
-      textShadowRadius: 4,
+      textShadowRadius: 6,
+      textDecorationLine: 'underline',
+    },
+    features: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginTop: getResponsivePadding(32),
+      paddingHorizontal: getResponsivePadding(20),
+    },
+    feature: {
+      alignItems: 'center',
+      flex: 1,
+      padding: getResponsivePadding(12),
+    },
+    featureIcon: {
+      width: getResponsiveValue(48),
+      height: getResponsiveValue(48),
+      borderRadius: getResponsiveValue(24),
+      backgroundColor: 'rgba(0, 255, 135, 0.1)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: getResponsivePadding(8),
+      borderWidth: 1,
+      borderColor: '#00FF87',
+    },
+    featureText: {
+      fontSize: getResponsiveFontSize(12),
+      color: '#8C8C8C',
+      fontWeight: '600',
+      textAlign: 'center',
     },
   });
 
@@ -217,22 +314,39 @@ export default function Login() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.backgroundGradient} />
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.View 
           style={{
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
+            transform: [
+              { translateY: slideAnim },
+              { scale: scaleAnim }
+            ]
           }}
         >
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <LogIn size={getResponsiveFontSize(32)} color="#E50914" />
+            <View style={styles.logoContainer}>
+              <View style={styles.iconContainer}>
+                <LogIn size={getResponsiveFontSize(32)} color="#E50914" />
+                <View style={styles.sparkleIcon}>
+                  <Sparkles size={getResponsiveFontSize(16)} color="#00FF87" />
+                </View>
+              </View>
+              <View style={styles.titleContainer}>
+                <Text style={styles.title}>Espacios</Text>
+                <Text style={styles.title}>Creativos</Text>
+                <Text style={styles.subtitle}>Tu portal de innovación</Text>
+              </View>
             </View>
-            <Text style={styles.title}>Espacios Creativos</Text>
-            <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
           </View>
 
           <View style={styles.form}>
+            <Text style={styles.formTitle}>Iniciar Sesión</Text>
+            
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Correo electrónico</Text>
               <View style={styles.inputContainer}>
@@ -300,6 +414,27 @@ export default function Login() {
               <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
                 <Text style={styles.link}>Regístrate</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.features}>
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <User size={getResponsiveFontSize(20)} color="#00FF87" />
+              </View>
+              <Text style={styles.featureText}>Perfil Personalizado</Text>
+            </View>
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Sparkles size={getResponsiveFontSize(20)} color="#00FF87" />
+              </View>
+              <Text style={styles.featureText}>Innovación</Text>
+            </View>
+            <View style={styles.feature}>
+              <View style={styles.featureIcon}>
+                <Lock size={getResponsiveFontSize(20)} color="#00FF87" />
+              </View>
+              <Text style={styles.featureText}>Seguro</Text>
             </View>
           </View>
         </Animated.View>
