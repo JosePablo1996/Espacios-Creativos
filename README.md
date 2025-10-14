@@ -7,14 +7,13 @@ Espacios Creativos es una aplicación móvil moderna desarrollada en React Nativ
 
 ### 🎨 Interfaz de Usuario Mejorada (UI/UX)
 - **Diseño Responsive**: Adaptado para móviles, tablets y desktop
-- **Tema Oscuro Premium**: Paleta de colores neón (#E50914, #00FF87, #00FFFF, #FFB800)
+- **Tema Oscuro**: Paleta de colores neón (#E50914, #00FF87, #00FFFF, #FFB800)
 - **Animaciones Fluidas**: Transiciones y efectos visuales optimizados
 - **Navegación Intuitiva**: Sistema de navegación mejorado entre pantallas
 
 ### 📱 Sistema de Navegación
 - **FAB Menu en Desktop**: Menú flotante con animaciones para dispositivos grandes
 - **Menú Desplegable en Móviles**: Navegación lateral optimizada para touch
-- **Navegación por Tabs**: Sistema de pestañas oculto con navegación personalizada
 
 ## 🏠 Pantallas Implementadas
 
