@@ -1,7 +1,8 @@
 // app/(tabs)/about.tsx
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Linking, Alert, Image } from 'react-native';
-import { Shield, Mail, Phone, Heart, Crown, DoorOpen, Users, Clock, Zap, Monitor, Wifi, Video, Calendar, Star, CreditCard } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Linking, Alert, Image, Modal, TouchableWithoutFeedback } from 'react-native';
+import { Shield, Mail, Phone, Heart, Crown, DoorOpen, Users, Clock, Zap, Monitor, Wifi, Video, Calendar, Star, CreditCard, X } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 
 // Importar la imagen correctamente
 const userAvatar = require('@/assets/images/user-avatar.jpg');
@@ -10,6 +11,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function AboutScreen() {
   const { user, profile, isAdmin } = useAuth();
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Detectar tipo de dispositivo
   const isMobile = width < 768;
@@ -215,15 +217,19 @@ export default function AboutScreen() {
       lineHeight: 16,
     },
 
-    // Avatar con foto - MÁS PEQUEÑO EN DESKTOP
+    // Avatar con foto - MÁS GRANDE EN DESKTOP
     avatarContainer: {
       alignItems: 'center',
       marginBottom: getResponsivePadding(30),
     },
     avatar: {
-      width: isDesktop ? width * 0.15 : width * 0.25,
-      height: isDesktop ? width * 0.15 : width * 0.25,
-      borderRadius: isDesktop ? width * 0.075 : width * 0.125,
+      width: isDesktop ? width * 0.22 : isTablet ? width * 0.25 : width * 0.32,
+      height: isDesktop ? width * 0.22 : isTablet ? width * 0.25 : width * 0.32,
+      maxWidth: isDesktop ? 200 : 150,
+      maxHeight: isDesktop ? 200 : 150,
+      minWidth: isDesktop ? 160 : 120,
+      minHeight: isDesktop ? 160 : 120,
+      borderRadius: isDesktop ? 100 : isTablet ? 80 : width * 0.16,
       backgroundColor: '#2A2A2A',
       justifyContent: 'center',
       alignItems: 'center',
@@ -239,12 +245,12 @@ export default function AboutScreen() {
     avatarImage: {
       width: '100%',
       height: '100%',
-      borderRadius: isDesktop ? width * 0.075 : width * 0.125,
+      borderRadius: isDesktop ? 100 : isTablet ? 80 : width * 0.16,
     },
     avatarPlaceholder: {
       width: '100%',
       height: '100%',
-      borderRadius: isDesktop ? width * 0.075 : width * 0.125,
+      borderRadius: isDesktop ? 100 : isTablet ? 80 : width * 0.16,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: '#1A1A1A',
@@ -299,6 +305,80 @@ export default function AboutScreen() {
       fontWeight: '700',
       marginBottom: getResponsivePadding(8),
     },
+
+    // Estilos del Modal
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    },
+    modalContent: {
+      backgroundColor: '#1A1A1A',
+      borderRadius: 24,
+      padding: getResponsivePadding(32),
+      alignItems: 'center',
+      borderWidth: 4,
+      borderColor: '#E50914',
+      shadowColor: '#E50914',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.6,
+      shadowRadius: 20,
+      elevation: 20,
+      maxWidth: '90%',
+      maxHeight: '90%',
+    },
+    closeButton: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      zIndex: 1,
+      backgroundColor: 'rgba(229, 9, 20, 0.8)',
+      borderRadius: 20,
+      padding: 8,
+      borderWidth: 2,
+      borderColor: '#FF6B6B',
+    },
+    modalAvatar: {
+      width: width * 0.6,
+      height: width * 0.6,
+      maxWidth: 400,
+      maxHeight: 400,
+      borderRadius: width * 0.3,
+      borderWidth: 6,
+      borderColor: '#4ecdc4',
+      marginBottom: getResponsivePadding(24),
+      overflow: 'hidden',
+      shadowColor: '#4ecdc4',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 20,
+      elevation: 15,
+    },
+    modalAvatarImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: width * 0.3,
+    },
+    modalUserName: {
+      fontSize: getResponsiveFontSize(isDesktop ? 32 : 24),
+      fontWeight: '900',
+      color: '#00FF87',
+      textAlign: 'center',
+      textShadowColor: '#00FF87',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 12,
+      marginBottom: getResponsivePadding(16),
+    },
+    modalUserEmail: {
+      fontSize: getResponsiveFontSize(isDesktop ? 18 : 16),
+      color: '#00FFFF',
+      textAlign: 'center',
+      textShadowColor: '#00FFFF',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 8,
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -312,15 +392,19 @@ export default function AboutScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Avatar con foto - MÁS PEQUEÑO EN DESKTOP */}
+        {/* Avatar con foto - MÁS GRANDE EN DESKTOP */}
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
+          <TouchableOpacity 
+            style={styles.avatar}
+            onPress={() => setModalVisible(true)}
+            activeOpacity={0.7}
+          >
             <Image 
               source={userAvatar} 
               style={styles.avatarImage}
               onError={(error) => console.log('Error loading image:', error.nativeEvent.error)}
             />
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Información Personal */}
@@ -484,6 +568,44 @@ export default function AboutScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Modal para ver la foto en grande */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <X size={getResponsiveIconSize(20)} color="#FFFFFF" />
+                </TouchableOpacity>
+                
+                <View style={styles.modalAvatar}>
+                  <Image 
+                    source={userAvatar} 
+                    style={styles.modalAvatarImage}
+                  />
+                </View>
+                
+                <Text style={styles.modalUserName}>
+                  {profile?.full_name || 'Jose Pablo Miranda Quintanilla'}
+                </Text>
+                
+                <Text style={styles.modalUserEmail}>
+                  {profile?.email || user?.email || 'jmirandaquintanilla@gmail.com'}
+                </Text>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }

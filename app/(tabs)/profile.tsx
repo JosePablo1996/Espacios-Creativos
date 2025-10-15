@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, Image, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Mail, Shield, Crown, Star, Calendar, Phone, CreditCard, Settings } from 'lucide-react-native';
+import { User, Mail, Shield, Crown, Star, Calendar, Phone, CreditCard, Settings, X } from 'lucide-react-native';
+import { useState } from 'react';
 
 // Importar la imagen correctamente
 const userAvatar = require('@/assets/images/user-avatar.jpg');
@@ -13,6 +14,7 @@ const isDesktop = width >= 1024;
 export default function ProfileScreen() {
   const { user, profile, isAdmin } = useAuth();
   const router = useRouter();
+  const [modalVisible, setModalVisible] = useState(false);
 
   const getResponsiveFontSize = (baseSize: number) => {
     const scale = Math.min(width / 375, height / 812);
@@ -84,13 +86,13 @@ export default function ProfileScreen() {
       width: '100%',
     },
     avatar: {
-      width: isDesktop ? width * 0.18 : isTablet ? width * 0.22 : width * 0.3,
-      height: isDesktop ? width * 0.18 : isTablet ? width * 0.22 : width * 0.3,
-      maxWidth: isDesktop ? 160 : 140,
-      maxHeight: isDesktop ? 160 : 140,
-      minWidth: isDesktop ? 140 : 120,
-      minHeight: isDesktop ? 140 : 120,
-      borderRadius: isDesktop ? 80 : isTablet ? 70 : width * 0.15,
+      width: isDesktop ? width * 0.22 : isTablet ? width * 0.25 : width * 0.32,
+      height: isDesktop ? width * 0.22 : isTablet ? width * 0.25 : width * 0.32,
+      maxWidth: isDesktop ? 200 : 150,
+      maxHeight: isDesktop ? 200 : 150,
+      minWidth: isDesktop ? 160 : 120,
+      minHeight: isDesktop ? 160 : 120,
+      borderRadius: isDesktop ? 100 : isTablet ? 80 : width * 0.16,
       backgroundColor: '#2A2A2A',
       justifyContent: 'center',
       alignItems: 'center',
@@ -107,12 +109,12 @@ export default function ProfileScreen() {
     avatarImage: {
       width: '100%',
       height: '100%',
-      borderRadius: isDesktop ? 80 : isTablet ? 70 : width * 0.15,
+      borderRadius: isDesktop ? 100 : isTablet ? 80 : width * 0.16,
     },
     avatarPlaceholder: {
       width: '100%',
       height: '100%',
-      borderRadius: isDesktop ? 80 : isTablet ? 70 : width * 0.15,
+      borderRadius: isDesktop ? 100 : isTablet ? 80 : width * 0.16,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: '#1A1A1A',
@@ -308,6 +310,79 @@ export default function ProfileScreen() {
       textShadowRadius: 6,
       fontStyle: 'italic',
     },
+    // Estilos del Modal
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    },
+    modalContent: {
+      backgroundColor: '#1A1A1A',
+      borderRadius: 24,
+      padding: getResponsivePadding(32),
+      alignItems: 'center',
+      borderWidth: 4,
+      borderColor: '#E50914',
+      shadowColor: '#E50914',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.6,
+      shadowRadius: 20,
+      elevation: 20,
+      maxWidth: '90%',
+      maxHeight: '90%',
+    },
+    closeButton: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      zIndex: 1,
+      backgroundColor: 'rgba(229, 9, 20, 0.8)',
+      borderRadius: 20,
+      padding: 8,
+      borderWidth: 2,
+      borderColor: '#FF6B6B',
+    },
+    modalAvatar: {
+      width: width * 0.6,
+      height: width * 0.6,
+      maxWidth: 400,
+      maxHeight: 400,
+      borderRadius: width * 0.3,
+      borderWidth: 6,
+      borderColor: '#4ecdc4',
+      marginBottom: getResponsivePadding(24),
+      overflow: 'hidden',
+      shadowColor: '#4ecdc4',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 20,
+      elevation: 15,
+    },
+    modalAvatarImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: width * 0.3,
+    },
+    modalUserName: {
+      fontSize: getResponsiveFontSize(isDesktop ? 32 : 24),
+      fontWeight: '900',
+      color: '#00FF87',
+      textAlign: 'center',
+      textShadowColor: '#00FF87',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 12,
+      marginBottom: getResponsivePadding(16),
+    },
+    modalUserEmail: {
+      fontSize: getResponsiveFontSize(isDesktop ? 18 : 16),
+      color: '#00FFFF',
+      textAlign: 'center',
+      textShadowColor: '#00FFFF',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 8,
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -327,13 +402,17 @@ export default function ProfileScreen() {
           {/* Header del perfil - Avatar centrado con nombre debajo */}
           <View style={responsiveStyles.profileHeader}>
             <View style={responsiveStyles.avatarContainer}>
-              <View style={responsiveStyles.avatar}>
+              <TouchableOpacity 
+                style={responsiveStyles.avatar}
+                onPress={() => setModalVisible(true)}
+                activeOpacity={0.7}
+              >
                 <Image 
                   source={userAvatar} 
                   style={responsiveStyles.avatarImage}
                   onError={(error) => console.log('Error loading image:', error.nativeEvent.error)}
                 />
-              </View>
+              </TouchableOpacity>
               <View style={responsiveStyles.userInfo}>
                 <Text style={responsiveStyles.userName}>
                   {profile?.full_name || 'Jose Pablo Miranda Quintanilla'}
@@ -460,6 +539,44 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal para ver la foto en grande */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={responsiveStyles.modalContainer}>
+            <TouchableWithoutFeedback>
+              <View style={responsiveStyles.modalContent}>
+                <TouchableOpacity 
+                  style={responsiveStyles.closeButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <X size={getResponsiveIconSize(20)} color="#FFFFFF" />
+                </TouchableOpacity>
+                
+                <View style={responsiveStyles.modalAvatar}>
+                  <Image 
+                    source={userAvatar} 
+                    style={responsiveStyles.modalAvatarImage}
+                  />
+                </View>
+                
+                <Text style={responsiveStyles.modalUserName}>
+                  {profile?.full_name || 'Jose Pablo Miranda Quintanilla'}
+                </Text>
+                
+                <Text style={responsiveStyles.modalUserEmail}>
+                  {profile?.email || user?.email || 'jmirandaquintanilla@gmail.com'}
+                </Text>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }

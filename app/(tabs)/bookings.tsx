@@ -8,11 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase, Database } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckCircle, XCircle, AlertCircle, Calendar, Clock, Trash2, Heart } from 'lucide-react-native';
+import { CheckCircle, XCircle, AlertCircle, Calendar, Clock, Trash2, Heart, Crown, X } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,6 +26,8 @@ export default function BookingsScreen() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const { user, isAdmin } = useAuth();
   const router = useRouter();
 
@@ -35,6 +39,28 @@ export default function BookingsScreen() {
   const getResponsivePadding = (basePadding: number) => {
     const scale = Math.min(width / 375, 1.2);
     return Math.round(basePadding * scale);
+  };
+
+  // Validación de usuario
+  const validateUser = () => {
+    if (!user || !user.id) {
+      Alert.alert('Error', 'Usuario no autenticado');
+      return false;
+    }
+    return true;
+  };
+
+  // Validación de datos de reserva
+  const validateBookingData = (booking: Booking) => {
+    if (!booking.rooms?.name) {
+      console.warn('Reserva sin nombre de sala:', booking.id);
+      return false;
+    }
+    if (!booking.start_time || !booking.end_time) {
+      console.warn('Reserva sin fechas válidas:', booking.id);
+      return false;
+    }
+    return true;
   };
 
   useEffect(() => {
@@ -73,7 +99,11 @@ export default function BookingsScreen() {
   }, [user, mounted]);
 
   const loadBookings = async () => {
-    if (!user) return;
+    if (!user || !user.id) {
+      Alert.alert('Error', 'Usuario no autenticado');
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -86,41 +116,72 @@ export default function BookingsScreen() {
         .order('start_time', { ascending: false });
 
       if (error) throw error;
-      setBookings(data || []);
+      
+      // Validar datos antes de establecer el estado
+      const validatedBookings = (data || []).filter(validateBookingData);
+      setBookings(validatedBookings);
     } catch (error: any) {
+      console.error('Error loading bookings:', error);
       Alert.alert('Error', 'No se pudieron cargar las reservas');
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteBooking = async (bookingId: string, status: string) => {
-    if (status !== 'pending') {
+  const openCancelModal = (booking: Booking) => {
+    // Validaciones antes de abrir el modal
+    if (booking.status !== 'pending') {
       Alert.alert('Error', 'Solo puedes cancelar reservas pendientes');
       return;
     }
 
-    Alert.alert(
-      'Cancelar reserva',
-      '¿Estás seguro de que deseas cancelar esta reserva?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Sí, cancelar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+    // Validar que la reserva no haya comenzado
+    const startDate = new Date(booking.start_time);
+    const now = new Date();
+    if (startDate <= now) {
+      Alert.alert('Error', 'No puedes cancelar una reserva que ya ha comenzado');
+      return;
+    }
 
-              if (error) throw error;
-              loadBookings();
-            } catch (error: any) {
-              Alert.alert('Error', 'No se pudo cancelar la reserva');
-            }
-          },
-        },
-      ]
-    );
+    setSelectedBooking(booking);
+    setCancelModalVisible(true);
+  };
+
+  const closeCancelModal = () => {
+    setCancelModalVisible(false);
+    setSelectedBooking(null);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!selectedBooking || !user || !user.id) {
+      Alert.alert('Error', 'Datos de reserva inválidos');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', selectedBooking.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      // Actualizar la lista localmente sin recargar
+      setBookings(prev => prev.filter(booking => booking.id !== selectedBooking.id));
+      
+      // Mostrar mensaje de éxito con estilo neon
+      Alert.alert(
+        '✅ Cancelación Exitosa',
+        'La reserva ha sido cancelada correctamente',
+        [{ text: 'Aceptar', style: 'default' }]
+      );
+      
+      closeCancelModal();
+    } catch (error: any) {
+      console.error('Error deleting booking:', error);
+      Alert.alert('Error', 'No se pudo cancelar la reserva: ' + error.message);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -156,15 +217,54 @@ export default function BookingsScreen() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida';
+      }
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch (error) {
+      return 'Fecha inválida';
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Hora inválida';
+      }
+      return date.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      return 'Hora inválida';
+    }
+  };
+
   const renderBooking = ({ item }: { item: Booking }) => {
+    if (!validateBookingData(item)) {
+      return null; // No renderizar reservas inválidas
+    }
+
     const startDate = new Date(item.start_time);
     const endDate = new Date(item.end_time);
     const isPast = endDate < new Date();
+    const canCancel = item.status === 'pending' && !isPast;
 
     return (
       <View style={[styles.bookingCard, isPast && styles.pastBooking]}>
         <View style={styles.bookingHeader}>
-          <Text style={styles.roomName}>{item.rooms.name}</Text>
+          <Text style={styles.roomName}>
+            {item.rooms?.name || 'Sala no disponible'}
+          </Text>
           <View
             style={[styles.statusBadge, { borderColor: getStatusColor(item.status) }]}
           >
@@ -179,27 +279,14 @@ export default function BookingsScreen() {
           <View style={styles.detailRow}>
             <Calendar size={16} color="#00FFFF" />
             <Text style={styles.detailText}>
-              {startDate.toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+              {formatDate(item.start_time)}
             </Text>
           </View>
 
           <View style={styles.detailRow}>
             <Clock size={16} color="#00FFFF" />
             <Text style={styles.detailText}>
-              {startDate.toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}{' '}
-              -{' '}
-              {endDate.toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {formatTime(item.start_time)} - {formatTime(item.end_time)}
             </Text>
           </View>
         </View>
@@ -218,14 +305,20 @@ export default function BookingsScreen() {
           </View>
         )}
 
-        {item.status === 'pending' && (
+        {canCancel && (
           <TouchableOpacity
             style={styles.deleteButton}
-            onPress={() => deleteBooking(item.id, item.status)}
+            onPress={() => openCancelModal(item)}
           >
             <Trash2 size={16} color="#FF3B30" />
             <Text style={styles.deleteButtonText}>Cancelar reserva</Text>
           </TouchableOpacity>
+        )}
+
+        {isPast && (
+          <View style={styles.pastIndicator}>
+            <Text style={styles.pastIndicatorText}>Reserva finalizada</Text>
+          </View>
         )}
       </View>
     );
@@ -281,19 +374,106 @@ export default function BookingsScreen() {
           style={styles.adminButton}
           onPress={() => router.push('/admin/bookings')}
         >
-          <Text style={styles.adminButtonText}>Ver panel de administrador</Text>
+          <Crown size={20} color="#FFD700" />
+          <Text style={styles.adminButtonText}>Panel de Administrador</Text>
         </TouchableOpacity>
       )}
 
-      {/* Footer con leyenda del desarrollador */}
+      {/* Footer con leyenda mejorada y colores neon */}
       <View style={styles.footer}>
         <View style={styles.heartContainer}>
-          <Heart size={14} color="#E50914" fill="#E50914" />
+          <Heart size={16} color="#FF0080" fill="#FF0080" />
         </View>
         <Text style={styles.watermark}>
-          Desarrollado con ♥️ por Jose Pablo Miranda Quintanilla
+          <Text style={styles.watermarkPrefix}>Desarrollado con ♥️ por </Text>
+          <Text style={styles.watermarkName}>Jose Pablo Miranda Quintanilla</Text>
         </Text>
+        <Text style={styles.versionText}>v2.1.0 • Build 347</Text>
       </View>
+
+      {/* Modal de Confirmación de Cancelación Mejorado */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={cancelModalVisible}
+        onRequestClose={closeCancelModal}
+      >
+        <TouchableWithoutFeedback onPress={closeCancelModal}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContainer}>
+                {/* Header del Modal */}
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalIconContainer}>
+                    <AlertCircle size={32} color="#FF6B6B" />
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.modalCloseButton}
+                    onPress={closeCancelModal}
+                  >
+                    <X size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Contenido del Modal */}
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>
+                    ¿Cancelar Reserva?
+                  </Text>
+                  
+                  <Text style={styles.modalSubtitle}>
+                    Esta acción no se puede deshacer
+                  </Text>
+
+                  {selectedBooking && (
+                    <View style={styles.bookingInfo}>
+                      <Text style={styles.bookingInfoLabel}>Sala:</Text>
+                      <Text style={styles.bookingInfoValue}>
+                        {selectedBooking.rooms?.name}
+                      </Text>
+                      
+                      <Text style={styles.bookingInfoLabel}>Fecha:</Text>
+                      <Text style={styles.bookingInfoValue}>
+                        {formatDate(selectedBooking.start_time)}
+                      </Text>
+                      
+                      <Text style={styles.bookingInfoLabel}>Horario:</Text>
+                      <Text style={styles.bookingInfoValue}>
+                        {formatTime(selectedBooking.start_time)} - {formatTime(selectedBooking.end_time)}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.warningBox}>
+                    <AlertCircle size={20} color="#FFB800" />
+                    <Text style={styles.warningText}>
+                      Al cancelar, esta sala quedará disponible para otros usuarios
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Botones de Acción */}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={closeCancelModal}
+                  >
+                    <Text style={styles.cancelButtonText}>Mantener Reserva</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.confirmButton]}
+                    onPress={confirmCancelBooking}
+                  >
+                    <Trash2 size={20} color="#FFFFFF" />
+                    <Text style={styles.confirmButtonText}>Sí, Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -368,7 +548,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   pastBooking: {
-    opacity: 0.6,
+    opacity: 0.7,
     borderColor: '#8C8C8C',
   },
   bookingHeader: {
@@ -500,6 +680,19 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
+  pastIndicator: {
+    backgroundColor: 'rgba(140, 140, 140, 0.3)',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  pastIndicatorText: {
+    color: '#8C8C8C',
+    fontSize: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -532,6 +725,8 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     shadowColor: '#E50914',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,
@@ -544,6 +739,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
+    marginLeft: 8,
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
@@ -559,13 +755,194 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   watermark: {
-    fontSize: 12,
-    color: '#4ecdc4',
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
-    textShadowColor: '#4ecdc4',
+    marginBottom: 4,
+  },
+  watermarkPrefix: {
+    color: '#00FFFF',
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+    fontStyle: 'italic',
+  },
+  watermarkName: {
+    color: '#FF0080',
+    fontWeight: '700',
+    textShadowColor: '#FF0080',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  versionText: {
+    fontSize: 10,
+    color: '#FFB800',
+    fontWeight: '600',
+    textShadowColor: '#FFB800',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
-    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  // Estilos del Modal Mejorado
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: '#E50914',
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#E50914',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 20,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(229, 9, 20, 0.1)',
+    borderBottomWidth: 2,
+    borderBottomColor: '#E50914',
+  },
+  modalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(229, 9, 20, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+  },
+  modalContent: {
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FF6B6B',
+    textAlign: 'center',
+    marginBottom: 8,
+    textShadowColor: '#FF6B6B',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#00FFFF',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontWeight: '600',
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  },
+  bookingInfo: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#00FF87',
+  },
+  bookingInfoLabel: {
+    fontSize: 12,
+    color: '#00FF87',
+    fontWeight: '700',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    textShadowColor: '#00FF87',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+  bookingInfoValue: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginBottom: 12,
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 2,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 184, 0, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#FFB800',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#FFB800',
+    fontWeight: '600',
+    marginLeft: 12,
+    flex: 1,
+    textShadowColor: '#FFB800',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    backgroundColor: 'rgba(42, 42, 42, 0.8)',
+    borderTopWidth: 2,
+    borderTopColor: '#2A2A2A',
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#00FFFF',
+  },
+  confirmButton: {
+    backgroundColor: '#E50914',
+    borderColor: '#FF6B6B',
+  },
+  cancelButtonText: {
+    color: '#00FFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    marginLeft: 8,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
