@@ -11,6 +11,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Animated,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase, Database } from '@/lib/supabase';
@@ -26,6 +27,7 @@ type Booking = Database['public']['Tables']['bookings']['Row'] & {
 export default function BookingsScreen() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -91,10 +93,13 @@ export default function BookingsScreen() {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
+          console.log('Cambio detectado en tiempo real, recargando bookings...');
           loadBookings();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Estado de suscripción:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -105,10 +110,12 @@ export default function BookingsScreen() {
     if (!user || !user.id) {
       Alert.alert('Error', 'Usuario no autenticado');
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
     try {
+      console.log('Cargando reservas para usuario:', user.id);
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -120,6 +127,7 @@ export default function BookingsScreen() {
 
       if (error) throw error;
       
+      console.log('Reservas cargadas exitosamente:', data?.length || 0);
       // Validar datos antes de establecer el estado
       const validatedBookings = (data || []).filter(validateBookingData);
       setBookings(validatedBookings);
@@ -128,7 +136,14 @@ export default function BookingsScreen() {
       Alert.alert('Error', 'No se pudieron cargar las reservas');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = async () => {
+    console.log('Iniciando pull-to-refresh...');
+    setRefreshing(true);
+    await loadBookings();
   };
 
   const showDeleteNotification = () => {
@@ -376,6 +391,12 @@ export default function BookingsScreen() {
           <Text style={styles.emptySubtitle}>
             Ve a la pestaña de Salas para hacer tu primera reserva
           </Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={onRefresh}
+          >
+            <Text style={styles.refreshButtonText}>🔄 Actualizar</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -384,6 +405,16 @@ export default function BookingsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#E50914', '#00FF87', '#00FFFF']}
+              tintColor="#00FFFF"
+              title="Actualizando reservas..."
+              titleColor="#00FFFF"
+            />
+          }
         />
       )}
 
@@ -746,6 +777,28 @@ const styles = StyleSheet.create({
     textShadowColor: '#00FFFF',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
+  },
+  refreshButton: {
+    backgroundColor: '#00FF87',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 20,
+    borderWidth: 2,
+    borderColor: '#00FFFF',
+    shadowColor: '#00FF87',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  refreshButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '800',
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   adminButton: {
     backgroundColor: '#E50914',
