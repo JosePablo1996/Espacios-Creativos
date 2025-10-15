@@ -120,18 +120,17 @@ Espacios Creativos es una aplicación móvil moderna desarrollada en React Nativ
 ## 📁 Estructura del Proyecto
 
 app/
-├── (auth)/ # Rutas de autenticación
-│ ├── login.tsx
-│ └── register.tsx
-├── (tabs)/ # Pantallas principales
-│ ├── _layout.tsx # Layout de navegación
-│ ├── index.tsx # Inicio - Salas
-│ ├── bookings.tsx # Mis Reservas
-│ ├── profile.tsx # Perfil
-│ └── about.tsx # Acerca de
-├── admin/ # Panel de administración
-└── contexts/ # Contextos de React
-text
+├── (auth)/                    # Rutas de autenticación
+│   ├── login.tsx             # Pantalla de inicio de sesión
+│   └── register.tsx          # Pantalla de registro
+├── (tabs)/                   # Pantallas principales con navegación
+│   ├── _layout.tsx           # Layout de navegación principal
+│   ├── index.tsx             # Inicio - Lista de salas
+│   ├── bookings.tsx          # Mis Reservas
+│   ├── profile.tsx           # Perfil de usuario
+│   └── about.tsx             # Acerca de la aplicación
+├── admin/                    # Panel de administración
+└── contexts/                 # Contextos de React para estado global
 
 
 ## 🎨 Paleta de Colores
