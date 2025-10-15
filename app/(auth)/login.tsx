@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,23 +11,36 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, Mail, Lock, Eye, EyeOff, Sparkles, User } from 'lucide-react-native';
+import { LogIn, Mail, Lock, Eye, EyeOff, Sparkles, User, Check, AlertCircle } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
   const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [validationProgress, setValidationProgress] = useState(0);
   const { signIn } = useAuth();
   const router = useRouter();
+
+  // Referencias para animaciones
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const getResponsiveFontSize = (baseSize: number) => {
     const scale = Math.min(width / 375, height / 812);
@@ -44,22 +57,121 @@ export default function Login() {
     return Math.round(baseValue * scale);
   };
 
+  // Validaciones
+  const validateField = (name: string, value: string) => {
+    let error = '';
+    
+    switch (name) {
+      case 'email':
+        if (!value.trim()) {
+          error = 'El correo electrónico es requerido';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          error = 'Ingresa un correo electrónico válido';
+        }
+        break;
+        
+      case 'password':
+        if (!value) {
+          error = 'La contraseña es requerida';
+        } else if (value.length < 6) {
+          error = 'La contraseña debe tener al menos 6 caracteres';
+        }
+        break;
+    }
+    
+    return error;
+  };
+
+  const handleInputChange = (name: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Validación en tiempo real después de un pequeño delay
+    setTimeout(() => {
+      const error = validateField(name, value);
+      setErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }, 500);
+  };
+
+  // Calcular progreso de validación
+  const calculateValidationProgress = () => {
+    let progress = 0;
+    const totalFields = 2;
+    
+    // Email
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      progress += 50;
+    }
+    
+    // Contraseña
+    if (formData.password.length >= 6) {
+      progress += 50;
+    }
+    
+    return progress;
+  };
+
+  // Animar progreso
+  useEffect(() => {
+    const progress = calculateValidationProgress();
+    setValidationProgress(progress);
+    
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [formData]);
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    // Validación final antes de enviar
+    const finalErrors = {
+      email: validateField('email', formData.email),
+      password: validateField('password', formData.password),
+    };
+
+    setErrors(finalErrors);
+
+    // Verificar si hay errores
+    const hasErrors = Object.values(finalErrors).some(error => error !== '');
+    if (hasErrors) {
+      Alert.alert('Error', 'Por favor corrige los errores en el formulario');
+      return;
+    }
+
+    // Verificar progreso de validación
+    if (validationProgress < 100) {
+      Alert.alert('Error', 'Por favor completa todos los campos correctamente');
       return;
     }
 
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
-      router.replace('/(tabs)');
+      await signIn(formData.email.trim(), formData.password);
+      setShowSuccessModal(true);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
   };
+
+  const getProgressColor = () => {
+    if (validationProgress < 25) return '#E50914';
+    if (validationProgress < 50) return '#FFA500';
+    if (validationProgress < 75) return '#FFD700';
+    return '#00FF87';
+  };
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
 
   useEffect(() => {
     Animated.parallel([
@@ -175,6 +287,30 @@ export default function Login() {
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 4,
     },
+    validationProgress: {
+      marginBottom: getResponsivePadding(20),
+    },
+    progressLabel: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: getResponsivePadding(8),
+    },
+    progressText: {
+      fontSize: getResponsiveFontSize(12),
+      fontWeight: '600',
+      color: '#8C8C8C',
+    },
+    progressBar: {
+      height: getResponsiveValue(6),
+      backgroundColor: '#333',
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: getProgressColor(),
+      borderRadius: 3,
+    },
     inputGroup: {
       marginBottom: getResponsivePadding(20),
     },
@@ -194,7 +330,7 @@ export default function Login() {
       alignItems: 'center',
       backgroundColor: '#1A1A1A',
       borderWidth: 2,
-      borderColor: '#333',
+      borderColor: errors.email ? '#E50914' : '#333',
       borderRadius: 14,
       paddingHorizontal: getResponsivePadding(16),
       shadowColor: '#000',
@@ -203,7 +339,7 @@ export default function Login() {
       shadowRadius: 8,
       elevation: 4,
     },
-    inputContainerFocused: {
+    inputContainerError: {
       borderColor: '#E50914',
       shadowColor: '#E50914',
       shadowOpacity: 0.3,
@@ -223,8 +359,15 @@ export default function Login() {
       padding: getResponsivePadding(8),
       marginLeft: getResponsivePadding(4),
     },
+    errorText: {
+      fontSize: getResponsiveFontSize(12),
+      color: '#E50914',
+      fontWeight: '600',
+      marginTop: getResponsivePadding(6),
+      marginLeft: getResponsivePadding(4),
+    },
     button: {
-      backgroundColor: 'linear-gradient(135deg, #E50914 0%, #FF6B6B 100%)',
+      backgroundColor: '#E50914',
       borderRadius: 14,
       padding: getResponsivePadding(18),
       alignItems: 'center',
@@ -238,10 +381,6 @@ export default function Login() {
       elevation: 8,
       flexDirection: 'row',
       justifyContent: 'center',
-    },
-    buttonGradient: {
-      borderRadius: 14,
-      overflow: 'hidden',
     },
     buttonDisabled: {
       opacity: 0.7,
@@ -307,7 +446,96 @@ export default function Login() {
       fontWeight: '600',
       textAlign: 'center',
     },
+    // Modal Styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: '#1A1A1A',
+      borderRadius: 20,
+      padding: getResponsivePadding(28),
+      margin: getResponsivePadding(20),
+      borderWidth: 2,
+      borderColor: '#00FF87',
+      shadowColor: '#00FF87',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      elevation: 16,
+      alignItems: 'center',
+    },
+    modalIcon: {
+      width: getResponsiveValue(80),
+      height: getResponsiveValue(80),
+      borderRadius: getResponsiveValue(40),
+      backgroundColor: 'rgba(0, 255, 135, 0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: getResponsivePadding(20),
+      borderWidth: 3,
+      borderColor: '#00FF87',
+    },
+    modalTitle: {
+      fontSize: getResponsiveFontSize(24),
+      fontWeight: '900',
+      color: '#00FF87',
+      textAlign: 'center',
+      marginBottom: getResponsivePadding(12),
+      textShadowColor: '#00FF87',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 8,
+    },
+    modalText: {
+      fontSize: getResponsiveFontSize(16),
+      color: '#FFFFFF',
+      textAlign: 'center',
+      marginBottom: getResponsivePadding(24),
+      lineHeight: getResponsiveFontSize(22),
+    },
+    modalButton: {
+      backgroundColor: '#00FF87',
+      borderRadius: 14,
+      padding: getResponsivePadding(16),
+      paddingHorizontal: getResponsivePadding(32),
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+      shadowColor: '#00FF87',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.5,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalButtonText: {
+      color: '#141414',
+      fontSize: getResponsiveFontSize(16),
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    requirements: {
+      marginTop: getResponsivePadding(16),
+    },
+    requirement: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: getResponsivePadding(6),
+    },
+    requirementText: {
+      fontSize: getResponsiveFontSize(12),
+      color: '#8C8C8C',
+      marginLeft: getResponsivePadding(6),
+    },
+    requirementMet: {
+      color: '#00FF87',
+    },
   });
+
+  const requirements = [
+    { key: 'email', text: 'Email válido', met: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) },
+    { key: 'password', text: 'Mínimo 6 caracteres', met: formData.password.length >= 6 },
+  ];
 
   return (
     <KeyboardAvoidingView
@@ -347,41 +575,63 @@ export default function Login() {
           <View style={styles.form}>
             <Text style={styles.formTitle}>Iniciar Sesión</Text>
             
+            {/* Barra de progreso de validación */}
+            <View style={styles.validationProgress}>
+              <View style={styles.progressLabel}>
+                <Text style={styles.progressText}>Completado del formulario</Text>
+                <Text style={styles.progressText}>{validationProgress}%</Text>
+              </View>
+              <View style={styles.progressBar}>
+                <Animated.View 
+                  style={[
+                    styles.progressFill, 
+                    { width: progressWidth }
+                  ]} 
+                />
+              </View>
+            </View>
+            
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Correo electrónico</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, errors.email && styles.inputContainerError]}>
                 <Mail 
                   size={getResponsiveFontSize(20)} 
-                  color="#8C8C8C" 
+                  color={errors.email ? '#E50914' : '#8C8C8C'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="tu@email.com"
                   placeholderTextColor="#8C8C8C"
-                  value={email}
-                  onChangeText={setEmail}
+                  value={formData.email}
+                  onChangeText={(value) => handleInputChange('email', value)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                 />
               </View>
+              {errors.email ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <AlertCircle size={getResponsiveFontSize(14)} color="#E50914" />
+                  <Text style={styles.errorText}>{errors.email}</Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Contraseña</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, errors.password && styles.inputContainerError]}>
                 <Lock 
                   size={getResponsiveFontSize(20)} 
-                  color="#8C8C8C" 
+                  color={errors.password ? '#E50914' : '#8C8C8C'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
                   placeholderTextColor="#8C8C8C"
-                  value={password}
-                  onChangeText={setPassword}
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange('password', value)}
                   secureTextEntry={!showPassword}
                   autoComplete="password"
                 />
@@ -396,12 +646,35 @@ export default function Login() {
                   )}
                 </TouchableOpacity>
               </View>
+              {errors.password ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <AlertCircle size={getResponsiveFontSize(14)} color="#E50914" />
+                  <Text style={styles.errorText}>{errors.password}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.requirements}>
+              {requirements.map((req) => (
+                <View key={req.key} style={styles.requirement}>
+                  <Check 
+                    size={getResponsiveFontSize(14)} 
+                    color={req.met ? '#00FF87' : '#8C8C8C'} 
+                  />
+                  <Text style={[
+                    styles.requirementText,
+                    req.met && styles.requirementMet
+                  ]}>
+                    {req.text}
+                  </Text>
+                </View>
+              ))}
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || validationProgress < 100) && styles.buttonDisabled]}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || validationProgress < 100}
             >
               <LogIn size={getResponsiveFontSize(20)} color="#FFFFFF" />
               <Text style={styles.buttonText}>
@@ -439,6 +712,41 @@ export default function Login() {
           </View>
         </Animated.View>
       </ScrollView>
+
+      {/* Modal de éxito */}
+      <Modal
+        visible={showSuccessModal}
+        animationType="fade"
+        transparent={true}
+        statusBarTranslucent={true}
+      >
+        <TouchableWithoutFeedback>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIcon}>
+                <Check size={getResponsiveFontSize(40)} color="#00FF87" />
+              </View>
+              
+              <Text style={styles.modalTitle}>¡Sesión Iniciada Exitosamente!</Text>
+              
+              <Text style={styles.modalText}>
+                Bienvenido de nuevo a Espacios Creativos.{'\n\n'}
+                Tu sesión ha sido iniciada correctamente. Ahora puedes acceder a todas las funcionalidades de la plataforma.
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.replace('/(tabs)');
+                }}
+              >
+                <Text style={styles.modalButtonText}>Continuar al Sistema</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

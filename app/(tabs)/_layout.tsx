@@ -33,6 +33,8 @@ export default function TabLayout() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [fabMenuVisible, setFabMenuVisible] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
+  const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
   const router = useRouter();
   const { user, profile, isAdmin, signOut } = useAuth();
 
@@ -41,6 +43,8 @@ export default function TabLayout() {
   const fabScaleAnim = useRef(new Animated.Value(0)).current;
   const fabRotateAnim = useRef(new Animated.Value(0)).current;
   const infoModalAnim = useRef(new Animated.Value(0)).current;
+  const avatarModalAnim = useRef(new Animated.Value(0)).current;
+  const logoutConfirmAnim = useRef(new Animated.Value(0)).current;
   
   // Animaciones para las opciones del menú móvil - OPTIMIZADAS
   const mobileOptionAnims = useRef(menuItems.map(() => new Animated.Value(0))).current;
@@ -214,6 +218,40 @@ export default function TabLayout() {
     }
   }, [infoModalVisible]);
 
+  // Efecto para animar el modal del avatar
+  useEffect(() => {
+    if (avatarModalVisible) {
+      Animated.timing(avatarModalAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(avatarModalAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [avatarModalVisible]);
+
+  // Efecto para animar el modal de confirmación de cierre de sesión
+  useEffect(() => {
+    if (logoutConfirmVisible) {
+      Animated.timing(logoutConfirmAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(logoutConfirmAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [logoutConfirmVisible]);
+
   const closeMenu = () => {
     // Detener animaciones previas
     animationRefs.current.forEach(animation => animation.stop());
@@ -266,12 +304,38 @@ export default function TabLayout() {
   };
 
   const openInfoModal = () => {
-    closeMenu();
+    if (isDesktop) {
+      setFabMenuVisible(false);
+    } else {
+      closeMenu();
+    }
     setInfoModalVisible(true);
   };
 
   const closeInfoModal = () => {
     setInfoModalVisible(false);
+  };
+
+  const openAvatarModal = () => {
+    closeMenu();
+    setAvatarModalVisible(true);
+  };
+
+  const closeAvatarModal = () => {
+    setAvatarModalVisible(false);
+  };
+
+  const openLogoutConfirm = () => {
+    if (isDesktop) {
+      setFabMenuVisible(false);
+    } else {
+      closeMenu();
+    }
+    setLogoutConfirmVisible(true);
+  };
+
+  const closeLogoutConfirm = () => {
+    setLogoutConfirmVisible(false);
   };
 
   // CORRECCIÓN: Función de navegación mejorada para TypeScript
@@ -298,8 +362,7 @@ export default function TabLayout() {
 
   // Función para manejar cierre de sesión
   const handleLogout = async () => {
-    closeMenu();
-    setFabMenuVisible(false);
+    closeLogoutConfirm();
     
     try {
       await signOut();
@@ -554,6 +617,213 @@ export default function TabLayout() {
     </Modal>
   );
 
+  // Modal del Avatar (solo para móvil)
+  const AvatarModal = () => (
+    <Modal
+      visible={avatarModalVisible}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={closeAvatarModal}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={closeAvatarModal}
+      >
+        <Animated.View 
+          style={[
+            styles.modalOverlay,
+            {
+              opacity: avatarModalAnim
+            }
+          ]}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            style={styles.modalContentContainer}
+            onPress={closeAvatarModal}
+          >
+            <Animated.View 
+              style={[
+                styles.avatarModalContent,
+                {
+                  transform: [
+                    {
+                      scale: avatarModalAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1]
+                      })
+                    }
+                  ],
+                  opacity: avatarModalAnim
+                }
+              ]}
+            >
+              <TouchableOpacity 
+                style={styles.avatarModalCloseButton}
+                onPress={closeAvatarModal}
+              >
+                <View style={styles.avatarModalCloseBackground}>
+                  <X size={20} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Header del Modal del Avatar */}
+              <View style={styles.avatarModalHeader}>
+                <View style={styles.avatarModalImageContainer}>
+                  <Image 
+                    source={userAvatar} 
+                    style={styles.avatarModalImage}
+                    onError={(error) => console.log('Error loading image:', error.nativeEvent.error)}
+                  />
+                  <View style={styles.avatarModalOnlineStatus} />
+                </View>
+                <Text style={styles.avatarModalTitle}>Perfil de Usuario</Text>
+                <Text style={styles.avatarModalSubtitle}>Información personal</Text>
+              </View>
+
+              {/* Contenido del Modal del Avatar */}
+              <View style={styles.avatarModalBody}>
+                <View style={styles.avatarInfoItem}>
+                  <View style={styles.avatarInfoItemLeft}>
+                    <UserIcon size={20} color="#00FF87" />
+                    <Text style={[styles.avatarInfoItemLabel, { color: '#00FF87' }]}>Nombre Completo</Text>
+                  </View>
+                  <View style={styles.avatarInfoItemRight}>
+                    <Text style={[styles.avatarInfoItemValue, { color: '#00FF87' }]}>{userName}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.avatarInfoItem}>
+                  <View style={styles.avatarInfoItemLeft}>
+                    <Mail size={20} color="#00FFFF" />
+                    <Text style={[styles.avatarInfoItemLabel, { color: '#00FFFF' }]}>Correo Electrónico</Text>
+                  </View>
+                  <View style={styles.avatarInfoItemRight}>
+                    <Text style={[styles.avatarInfoItemValue, { color: '#00FFFF' }]}>{userEmail}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.avatarInfoItem}>
+                  <View style={styles.avatarInfoItemLeft}>
+                    <Crown size={20} color="#FFB800" />
+                    <Text style={[styles.avatarInfoItemLabel, { color: '#FFB800' }]}>Rol</Text>
+                  </View>
+                  <View style={styles.avatarInfoItemRight}>
+                    <View style={[styles.avatarRoleBadge, { backgroundColor: isAdmin ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 255, 255, 0.1)' }]}>
+                      <Text style={[styles.avatarRoleText, { color: isAdmin ? '#FFD700' : '#00FFFF' }]}>
+                        {isAdmin ? 'Administrador' : 'Usuario'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.avatarInfoItem}>
+                  <View style={styles.avatarInfoItemLeft}>
+                    <DeviceIcon size={20} color={deviceColor} />
+                    <Text style={[styles.avatarInfoItemLabel, { color: deviceColor }]}>Dispositivo</Text>
+                  </View>
+                  <View style={styles.avatarInfoItemRight}>
+                    <Text style={[styles.avatarInfoItemValue, { color: deviceColor }]}>{deviceText}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Footer del Modal del Avatar */}
+              <View style={styles.avatarModalFooter}>
+                <View style={styles.avatarFooterHeartContainer}>
+                  <Heart size={16} color="#FF6B9D" fill="#FF6B9D" />
+                </View>
+                <Text style={styles.avatarModalFooterText}>
+                  Sesión activa en <Text style={{ color: '#FF6B9D' }}>{deviceText.toLowerCase()}</Text>
+                </Text>
+              </View>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  // Modal de Confirmación de Cierre de Sesión
+  const LogoutConfirmModal = () => (
+    <Modal
+      visible={logoutConfirmVisible}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={closeLogoutConfirm}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={closeLogoutConfirm}
+      >
+        <Animated.View 
+          style={[
+            styles.modalOverlay,
+            {
+              opacity: logoutConfirmAnim
+            }
+          ]}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            style={styles.modalContentContainer}
+            onPress={closeLogoutConfirm}
+          >
+            <Animated.View 
+              style={[
+                styles.logoutConfirmContent,
+                {
+                  transform: [
+                    {
+                      scale: logoutConfirmAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1]
+                      })
+                    }
+                  ],
+                  opacity: logoutConfirmAnim
+                }
+              ]}
+            >
+              {/* Icono de advertencia */}
+              <View style={styles.logoutIconContainer}>
+                <AlertTriangle size={48} color="#FFB800" />
+              </View>
+
+              {/* Título y mensaje */}
+              <Text style={styles.logoutConfirmTitle}>¿Cerrar Sesión?</Text>
+              <Text style={styles.logoutConfirmMessage}>
+                Estás a punto de cerrar tu sesión. ¿Estás seguro de que quieres continuar?
+              </Text>
+
+              {/* Botones de acción */}
+              <View style={styles.logoutButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.logoutButton, styles.cancelButton]}
+                  onPress={closeLogoutConfirm}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.logoutButton, styles.confirmButton]}
+                  onPress={handleLogout}
+                  activeOpacity={0.7}
+                >
+                  <LogOut size={18} color="#FFFFFF" />
+                  <Text style={styles.confirmButtonText}>Cerrar Sesión</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   const DrawerMenu = () => (
     <Modal
       visible={menuVisible}
@@ -593,8 +863,12 @@ export default function TabLayout() {
                 <View style={styles.headerBackground} />
                 
                 <View style={styles.userProfileSection}>
-                  {/* Avatar MEJORADO con efecto neomórfico */}
-                  <View style={styles.avatarContainer}>
+                  {/* Avatar MEJORADO con efecto neomórfico - Ahora es clickeable */}
+                  <TouchableOpacity 
+                    style={styles.avatarContainer}
+                    onPress={openAvatarModal}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.avatarBackground} />
                     <Image 
                       source={userAvatar} 
@@ -605,7 +879,7 @@ export default function TabLayout() {
                     <View style={styles.onlineStatus} />
                     {/* Efecto de brillo en el avatar */}
                     <View style={styles.avatarGlow} />
-                  </View>
+                  </TouchableOpacity>
 
                   {/* Información del usuario MEJORADA */}
                   <View style={styles.userInfo}>
@@ -758,11 +1032,11 @@ export default function TabLayout() {
                       onPress={() => handleMenuPress('error-404')}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.menuIconContainer, { borderColor: '#E50914' }]}>
-                        <AlertTriangle size={22} color="#E50914" />
+                      <View style={[styles.menuIconContainer, { borderColor: '#FF6B9D' }]}>
+                        <AlertTriangle size={22} color="#FF6B9D" />
                       </View>
-                      <Text style={[styles.menuItemText, { color: '#E50914' }]}>Error 404</Text>
-                      <View style={[styles.menuItemGlow, { backgroundColor: '#E5091430' }]} />
+                      <Text style={[styles.menuItemText, { color: '#FF6B9D' }]}>Error 404</Text>
+                      <View style={[styles.menuItemGlow, { backgroundColor: '#FF6B9D30' }]} />
                     </TouchableOpacity>
                   </Animated.View>
 
@@ -785,7 +1059,7 @@ export default function TabLayout() {
                   >
                     <TouchableOpacity
                       style={styles.menuItemTouchable}
-                      onPress={handleLogout}
+                      onPress={openLogoutConfirm}
                       activeOpacity={0.7}
                     >
                       <View style={[styles.menuIconContainer, { borderColor: '#FF4444' }]}>
@@ -935,25 +1209,25 @@ export default function TabLayout() {
             bottom: 120 + (menuItems.length * 85),
             transform: [
               { 
-                scale: fabScaleAnim.interpolate({
+                scale: optionAnims[0].interpolate({
                   inputRange: [0, 1],
                   outputRange: [0.5, 1]
                 })
               },
               { 
-                translateY: fabScaleAnim.interpolate({
+                translateY: optionAnims[0].interpolate({
                   inputRange: [0, 1],
                   outputRange: [20, 0]
                 })
               },
               {
-                translateX: fabScaleAnim.interpolate({
+                translateX: optionAnims[0].interpolate({
                   inputRange: [0, 1],
                   outputRange: [-15, 0] // Cambiado a negativo
                 })
               }
             ],
-            opacity: fabScaleAnim
+            opacity: optionAnims[0]
           }
         ]}
       >
@@ -961,10 +1235,10 @@ export default function TabLayout() {
           style={[
             styles.fabOptionLabelRight,
             {
-              opacity: fabScaleAnim,
+              opacity: optionAnims[0],
               transform: [
                 {
-                  translateX: fabScaleAnim.interpolate({
+                  translateX: optionAnims[0].interpolate({
                     inputRange: [0, 1],
                     outputRange: [8, 0]
                   })
@@ -996,25 +1270,25 @@ export default function TabLayout() {
             bottom: 120 + ((menuItems.length + 1) * 85),
             transform: [
               { 
-                scale: fabScaleAnim.interpolate({
+                scale: optionAnims[0].interpolate({
                   inputRange: [0, 1],
                   outputRange: [0.5, 1]
                 })
               },
               { 
-                translateY: fabScaleAnim.interpolate({
+                translateY: optionAnims[0].interpolate({
                   inputRange: [0, 1],
                   outputRange: [20, 0]
                 })
               },
               {
-                translateX: fabScaleAnim.interpolate({
+                translateX: optionAnims[0].interpolate({
                   inputRange: [0, 1],
                   outputRange: [-15, 0] // Cambiado a negativo
                 })
               }
             ],
-            opacity: fabScaleAnim
+            opacity: optionAnims[0]
           }
         ]}
       >
@@ -1022,10 +1296,10 @@ export default function TabLayout() {
           style={[
             styles.fabOptionLabelRight,
             {
-              opacity: fabScaleAnim,
+              opacity: optionAnims[0],
               transform: [
                 {
-                  translateX: fabScaleAnim.interpolate({
+                  translateX: optionAnims[0].interpolate({
                     inputRange: [0, 1],
                     outputRange: [8, 0]
                   })
@@ -1042,7 +1316,7 @@ export default function TabLayout() {
           style={[styles.fabOptionButton, { 
             backgroundColor: '#FF4444',
           }]}
-          onPress={handleLogout}
+          onPress={openLogoutConfirm}
           activeOpacity={0.7}
         >
           <LogOut size={22} color="#FFFFFF" />
@@ -1053,11 +1327,11 @@ export default function TabLayout() {
 
   return (
     <View style={styles.container}>
-      {/* Eliminamos las Tabs y solo mantenemos el contenido principal */}
+      {/* Eliminamos completamente las Tabs de navegación para todas las versiones */}
       <Tabs 
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { display: 'none' }, // Ocultamos completamente la tab bar
+          tabBarStyle: { display: 'none' }, // Ocultamos completamente la tab bar en todas las versiones
         }}
       >
         <Tabs.Screen name="index" />
@@ -1085,8 +1359,10 @@ export default function TabLayout() {
       {/* Renderizar el FAB menu para desktop */}
       {isDesktop && <FabMenu />}
 
-      {/* Modal de información del sistema */}
+      {/* Modales */}
       <InfoModal />
+      {isMobile && <AvatarModal />}
+      <LogoutConfirmModal />
     </View>
   );
 }
@@ -1667,5 +1943,232 @@ const styles = StyleSheet.create({
     color: '#FF6B9D',
     fontWeight: '600',
     fontSize: 13,
+  },
+  // Estilos del Modal del Avatar MEJORADOS
+  avatarModalContent: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 24,
+    padding: 0,
+    width: Platform.OS === 'web' ? 450 : Math.min(450, width * 0.9),
+    maxHeight: Platform.OS === 'web' ? '80%' : '85%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 20,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 30,
+    overflow: 'hidden',
+  },
+  avatarModalCloseButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  avatarModalCloseBackground: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  avatarModalHeader: {
+    paddingVertical: 35,
+    paddingHorizontal: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 255, 135, 0.05)',
+  },
+  avatarModalImageContainer: {
+    position: 'relative',
+    marginBottom: 20,
+  },
+  avatarModalImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: 'rgba(0, 255, 135, 0.6)',
+  },
+  avatarModalOnlineStatus: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#00FF87',
+    borderWidth: 3,
+    borderColor: '#0A0A0A',
+    shadowColor: '#00FF87',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  avatarModalTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#00FF87',
+    marginBottom: 8,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 255, 135, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  avatarModalSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+  },
+  avatarModalBody: {
+    padding: 30,
+  },
+  avatarInfoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  avatarInfoItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarInfoItemRight: {
+    marginLeft: 15,
+  },
+  avatarInfoItemLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 12,
+    textShadowColor: 'rgba(255, 255, 255, 0.1)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 5,
+  },
+  avatarInfoItemValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    textShadowColor: 'rgba(255, 255, 255, 0.1)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 5,
+  },
+  avatarRoleBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  avatarRoleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textShadowColor: 'rgba(255, 255, 255, 0.1)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 5,
+  },
+  avatarModalFooter: {
+    paddingVertical: 25,
+    paddingHorizontal: 30,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 157, 0.05)',
+  },
+  avatarFooterHeartContainer: {
+    marginBottom: 12,
+  },
+  avatarModalFooterText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  // Estilos del Modal de Confirmación de Cierre de Sesión
+  logoutConfirmContent: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    width: '100%',
+    maxWidth: 400,
+    padding: 30,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
+    alignItems: 'center',
+  },
+  logoutIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 184, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 184, 0, 0.3)',
+  },
+  logoutConfirmTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  logoutConfirmMessage: {
+    fontSize: 16,
+    color: '#CCCCCC',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+  logoutButtonsContainer: {
+    flexDirection: 'row',
+    gap: 15,
+    width: '100%',
+  },
+  logoutButton: {
+    flex: 1,
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  confirmButton: {
+    backgroundColor: '#FF4444',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 68, 68, 0.3)',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

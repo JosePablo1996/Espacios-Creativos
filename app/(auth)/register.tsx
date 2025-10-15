@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,26 +11,54 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, Mail, Lock, Eye, EyeOff, User, Sparkles, Shield, CheckCircle } from 'lucide-react-native';
+import { 
+  UserPlus, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  User, 
+  Sparkles, 
+  Shield, 
+  CheckCircle, 
+  X,
+  AlertCircle,
+  Check
+} from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
 export default function Register() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    confirmPassword: ''
+  });
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    confirmPassword: ''
+  });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
   const [scaleAnim] = useState(new Animated.Value(0.8));
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [validationProgress, setValidationProgress] = useState(0);
   const { signUp } = useAuth();
   const router = useRouter();
+
+  // Referencias para animaciones
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const getResponsiveFontSize = (baseSize: number) => {
     const scale = Math.min(width / 375, height / 812);
@@ -47,30 +75,145 @@ export default function Register() {
     return Math.round(baseValue * scale);
   };
 
+  // Validaciones
+  const validateField = (name: string, value: string) => {
+    let error = '';
+    
+    switch (name) {
+      case 'fullName':
+        if (!value.trim()) {
+          error = 'El nombre completo es requerido';
+        } else if (value.trim().length < 2) {
+          error = 'El nombre debe tener al menos 2 caracteres';
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+          error = 'El nombre solo puede contener letras y espacios';
+        }
+        break;
+        
+      case 'email':
+        if (!value.trim()) {
+          error = 'El correo electrónico es requerido';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          error = 'Ingresa un correo electrónico válido';
+        }
+        break;
+        
+      case 'password':
+        if (!value) {
+          error = 'La contraseña es requerida';
+        } else if (value.length < 8) {
+          error = 'La contraseña debe tener al menos 8 caracteres';
+        } else if (!/(?=.*[a-z])/.test(value)) {
+          error = 'Debe contener al menos una minúscula';
+        } else if (!/(?=.*[A-Z])/.test(value)) {
+          error = 'Debe contener al menos una mayúscula';
+        } else if (!/(?=.*\d)/.test(value)) {
+          error = 'Debe contener al menos un número';
+        } else if (!/(?=.*[@$!%*?&])/.test(value)) {
+          error = 'Debe contener al menos un carácter especial (@$!%*?&)';
+        }
+        break;
+        
+      case 'confirmPassword':
+        if (!value) {
+          error = 'Confirma tu contraseña';
+        } else if (value !== formData.password) {
+          error = 'Las contraseñas no coinciden';
+        }
+        break;
+    }
+    
+    return error;
+  };
+
+  const handleInputChange = (name: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Validación en tiempo real después de un pequeño delay
+    setTimeout(() => {
+      const error = validateField(name, value);
+      setErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }, 500);
+  };
+
+  // Calcular progreso de validación
+  const calculateValidationProgress = () => {
+    let progress = 0;
+    const totalFields = 4;
+    
+    // Nombre completo
+    if (formData.fullName.trim().length >= 2 && /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.fullName)) {
+      progress += 25;
+    }
+    
+    // Email
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      progress += 25;
+    }
+    
+    // Contraseña
+    if (formData.password.length >= 8 && 
+        /(?=.*[a-z])/.test(formData.password) &&
+        /(?=.*[A-Z])/.test(formData.password) &&
+        /(?=.*\d)/.test(formData.password) &&
+        /(?=.*[@$!%*?&])/.test(formData.password)) {
+      progress += 25;
+    }
+    
+    // Confirmar contraseña
+    if (formData.confirmPassword === formData.password && formData.confirmPassword.length > 0) {
+      progress += 25;
+    }
+    
+    return progress;
+  };
+
+  // Animar progreso
+  useEffect(() => {
+    const progress = calculateValidationProgress();
+    setValidationProgress(progress);
+    
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [formData]);
+
   const handleRegister = async () => {
-    if (!email || !password || !fullName || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    // Validación final antes de enviar
+    const finalErrors = {
+      email: validateField('email', formData.email),
+      password: validateField('password', formData.password),
+      fullName: validateField('fullName', formData.fullName),
+      confirmPassword: validateField('confirmPassword', formData.confirmPassword)
+    };
+
+    setErrors(finalErrors);
+
+    // Verificar si hay errores
+    const hasErrors = Object.values(finalErrors).some(error => error !== '');
+    if (hasErrors) {
+      Alert.alert('Error', 'Por favor corrige los errores en el formulario');
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    // Verificar progreso de validación
+    if (validationProgress < 100) {
+      Alert.alert('Error', 'Por favor completa todos los campos correctamente');
       return;
     }
 
     setLoading(true);
     try {
-      await signUp(email.trim(), password, fullName.trim());
-      Alert.alert(
-        '¡Registro Exitoso!',
-        'Tu cuenta ha sido creada exitosamente. Bienvenido a Espacios Creativos.',
-        [{ text: 'Continuar', onPress: () => router.replace('/(auth)/login') }]
-      );
+      await signUp(formData.email.trim(), formData.password, formData.fullName.trim());
+      setShowSuccessModal(true);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Error al registrarse');
     } finally {
@@ -79,13 +222,57 @@ export default function Register() {
   };
 
   const getPasswordStrength = (pass: string) => {
-    if (pass.length === 0) return { strength: 0, color: '#8C8C8C', text: '' };
-    if (pass.length < 6) return { strength: 33, color: '#E50914', text: 'Débil' };
-    if (pass.length < 8) return { strength: 66, color: '#FFA500', text: 'Media' };
-    return { strength: 100, color: '#00FF87', text: 'Fuerte' };
+    if (pass.length === 0) return { strength: 0, color: '#8C8C8C', text: '', level: 0 };
+    
+    let strength = 0;
+    let color = '#E50914';
+    let text = 'Débil';
+    let level = 1;
+
+    // Longitud
+    if (pass.length >= 8) strength += 25;
+    
+    // Minúsculas
+    if (/(?=.*[a-z])/.test(pass)) strength += 25;
+    
+    // Mayúsculas
+    if (/(?=.*[A-Z])/.test(pass)) strength += 25;
+    
+    // Números y caracteres especiales
+    if (/(?=.*\d)/.test(pass)) strength += 12.5;
+    if (/(?=.*[@$!%*?&])/.test(pass)) strength += 12.5;
+
+    // Determinar nivel y color
+    if (strength >= 75) {
+      color = '#00FF87';
+      text = 'Fuerte';
+      level = 3;
+    } else if (strength >= 50) {
+      color = '#FFA500';
+      text = 'Media';
+      level = 2;
+    } else {
+      color = '#E50914';
+      text = 'Débil';
+      level = 1;
+    }
+
+    return { strength, color, text, level };
   };
 
-  const passwordStrength = getPasswordStrength(password);
+  const passwordStrength = getPasswordStrength(formData.password);
+
+  const getProgressColor = () => {
+    if (validationProgress < 25) return '#E50914';
+    if (validationProgress < 50) return '#FFA500';
+    if (validationProgress < 75) return '#FFD700';
+    return '#00FF87';
+  };
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
 
   useEffect(() => {
     Animated.parallel([
@@ -201,6 +388,30 @@ export default function Register() {
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 4,
     },
+    validationProgress: {
+      marginBottom: getResponsivePadding(20),
+    },
+    progressLabel: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: getResponsivePadding(8),
+    },
+    progressText: {
+      fontSize: getResponsiveFontSize(12),
+      fontWeight: '600',
+      color: '#8C8C8C',
+    },
+    progressBar: {
+      height: getResponsiveValue(6),
+      backgroundColor: '#333',
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: getProgressColor(),
+      borderRadius: 3,
+    },
     inputGroup: {
       marginBottom: getResponsivePadding(18),
     },
@@ -220,7 +431,7 @@ export default function Register() {
       alignItems: 'center',
       backgroundColor: '#1A1A1A',
       borderWidth: 2,
-      borderColor: '#333',
+      borderColor: errors.fullName ? '#E50914' : '#333',
       borderRadius: 14,
       paddingHorizontal: getResponsivePadding(16),
       shadowColor: '#000',
@@ -229,7 +440,7 @@ export default function Register() {
       shadowRadius: 8,
       elevation: 4,
     },
-    inputContainerFocused: {
+    inputContainerError: {
       borderColor: '#E50914',
       shadowColor: '#E50914',
       shadowOpacity: 0.3,
@@ -247,6 +458,13 @@ export default function Register() {
     },
     passwordToggle: {
       padding: getResponsivePadding(8),
+      marginLeft: getResponsivePadding(4),
+    },
+    errorText: {
+      fontSize: getResponsiveFontSize(12),
+      color: '#E50914',
+      fontWeight: '600',
+      marginTop: getResponsivePadding(6),
       marginLeft: getResponsivePadding(4),
     },
     passwordStrength: {
@@ -365,11 +583,83 @@ export default function Register() {
       fontWeight: '600',
       textAlign: 'center',
     },
+    // Modal Styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: '#1A1A1A',
+      borderRadius: 20,
+      padding: getResponsivePadding(28),
+      margin: getResponsivePadding(20),
+      borderWidth: 2,
+      borderColor: '#00FF87',
+      shadowColor: '#00FF87',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      elevation: 16,
+      alignItems: 'center',
+    },
+    modalIcon: {
+      width: getResponsiveValue(80),
+      height: getResponsiveValue(80),
+      borderRadius: getResponsiveValue(40),
+      backgroundColor: 'rgba(0, 255, 135, 0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: getResponsivePadding(20),
+      borderWidth: 3,
+      borderColor: '#00FF87',
+    },
+    modalTitle: {
+      fontSize: getResponsiveFontSize(24),
+      fontWeight: '900',
+      color: '#00FF87',
+      textAlign: 'center',
+      marginBottom: getResponsivePadding(12),
+      textShadowColor: '#00FF87',
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 8,
+    },
+    modalText: {
+      fontSize: getResponsiveFontSize(16),
+      color: '#FFFFFF',
+      textAlign: 'center',
+      marginBottom: getResponsivePadding(24),
+      lineHeight: getResponsiveFontSize(22),
+    },
+    modalButton: {
+      backgroundColor: '#00FF87',
+      borderRadius: 14,
+      padding: getResponsivePadding(16),
+      paddingHorizontal: getResponsivePadding(32),
+      borderWidth: 2,
+      borderColor: '#FFFFFF',
+      shadowColor: '#00FF87',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.5,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalButtonText: {
+      color: '#141414',
+      fontSize: getResponsiveFontSize(16),
+      fontWeight: '800',
+      textAlign: 'center',
+    },
   });
 
   const requirements = [
-    { key: 'length', text: 'Mínimo 6 caracteres', met: password.length >= 6 },
-    { key: 'match', text: 'Las contraseñas coinciden', met: password === confirmPassword && confirmPassword.length > 0 },
+    { key: 'length', text: 'Mínimo 8 caracteres', met: formData.password.length >= 8 },
+    { key: 'lowercase', text: 'Una letra minúscula', met: /(?=.*[a-z])/.test(formData.password) },
+    { key: 'uppercase', text: 'Una letra mayúscula', met: /(?=.*[A-Z])/.test(formData.password) },
+    { key: 'number', text: 'Un número', met: /(?=.*\d)/.test(formData.password) },
+    { key: 'special', text: 'Un carácter especial (@$!%*?&)', met: /(?=.*[@$!%*?&])/.test(formData.password) },
+    { key: 'match', text: 'Las contraseñas coinciden', met: formData.password === formData.confirmPassword && formData.confirmPassword.length > 0 },
   ];
 
   return (
@@ -410,61 +700,89 @@ export default function Register() {
           <View style={styles.form}>
             <Text style={styles.formTitle}>Registro</Text>
             
+            {/* Barra de progreso de validación */}
+            <View style={styles.validationProgress}>
+              <View style={styles.progressLabel}>
+                <Text style={styles.progressText}>Completado del formulario</Text>
+                <Text style={styles.progressText}>{validationProgress}%</Text>
+              </View>
+              <View style={styles.progressBar}>
+                <Animated.View 
+                  style={[
+                    styles.progressFill, 
+                    { width: progressWidth }
+                  ]} 
+                />
+              </View>
+            </View>
+            
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Nombre completo</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, errors.fullName && styles.inputContainerError]}>
                 <User 
                   size={getResponsiveFontSize(20)} 
-                  color="#8C8C8C" 
+                  color={errors.fullName ? '#E50914' : '#8C8C8C'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Juan Pérez"
                   placeholderTextColor="#8C8C8C"
-                  value={fullName}
-                  onChangeText={setFullName}
+                  value={formData.fullName}
+                  onChangeText={(value) => handleInputChange('fullName', value)}
                   autoComplete="name"
                   autoCapitalize="words"
                 />
               </View>
+              {errors.fullName ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <AlertCircle size={getResponsiveFontSize(14)} color="#E50914" />
+                  <Text style={styles.errorText}>{errors.fullName}</Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Correo electrónico</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, errors.email && styles.inputContainerError]}>
                 <Mail 
                   size={getResponsiveFontSize(20)} 
-                  color="#8C8C8C" 
+                  color={errors.email ? '#E50914' : '#8C8C8C'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="tu@email.com"
                   placeholderTextColor="#8C8C8C"
-                  value={email}
-                  onChangeText={setEmail}
+                  value={formData.email}
+                  onChangeText={(value) => handleInputChange('email', value)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                 />
               </View>
+              {errors.email ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <AlertCircle size={getResponsiveFontSize(14)} color="#E50914" />
+                  <Text style={styles.errorText}>{errors.email}</Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Contraseña</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, errors.password && styles.inputContainerError]}>
                 <Lock 
                   size={getResponsiveFontSize(20)} 
-                  color="#8C8C8C" 
+                  color={errors.password ? '#E50914' : '#8C8C8C'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
                   placeholderTextColor="#8C8C8C"
-                  value={password}
-                  onChangeText={setPassword}
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange('password', value)}
                   secureTextEntry={!showPassword}
                   autoComplete="password-new"
                 />
@@ -479,13 +797,20 @@ export default function Register() {
                   )}
                 </TouchableOpacity>
               </View>
-              {password.length > 0 && (
+              {errors.password ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <AlertCircle size={getResponsiveFontSize(14)} color="#E50914" />
+                  <Text style={styles.errorText}>{errors.password}</Text>
+                </View>
+              ) : null}
+              
+              {formData.password.length > 0 && (
                 <View style={styles.passwordStrength}>
                   <View style={styles.strengthBar}>
                     <View style={[styles.strengthFill, { width: `${passwordStrength.strength}%` }]} />
                   </View>
                   <Text style={styles.strengthText}>
-                    {passwordStrength.text} {passwordStrength.text && '•'} {password.length} caracteres
+                    {passwordStrength.text} {passwordStrength.text && '•'} {formData.password.length} caracteres
                   </Text>
                 </View>
               )}
@@ -493,18 +818,18 @@ export default function Register() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirmar contraseña</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, errors.confirmPassword && styles.inputContainerError]}>
                 <Lock 
                   size={getResponsiveFontSize(20)} 
-                  color="#8C8C8C" 
+                  color={errors.confirmPassword ? '#E50914' : '#8C8C8C'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
                   placeholderTextColor="#8C8C8C"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
+                  value={formData.confirmPassword}
+                  onChangeText={(value) => handleInputChange('confirmPassword', value)}
                   secureTextEntry={!showConfirmPassword}
                   autoComplete="password-new"
                 />
@@ -519,6 +844,12 @@ export default function Register() {
                   )}
                 </TouchableOpacity>
               </View>
+              {errors.confirmPassword ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                  <AlertCircle size={getResponsiveFontSize(14)} color="#E50914" />
+                  <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.requirements}>
@@ -539,9 +870,9 @@ export default function Register() {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || validationProgress < 100) && styles.buttonDisabled]}
               onPress={handleRegister}
-              disabled={loading}
+              disabled={loading || validationProgress < 100}
             >
               <UserPlus size={getResponsiveFontSize(20)} color="#FFFFFF" />
               <Text style={styles.buttonText}>
@@ -579,6 +910,41 @@ export default function Register() {
           </View>
         </Animated.View>
       </ScrollView>
+
+      {/* Modal de éxito */}
+      <Modal
+        visible={showSuccessModal}
+        animationType="fade"
+        transparent={true}
+        statusBarTranslucent={true}
+      >
+        <TouchableWithoutFeedback>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIcon}>
+                <Check size={getResponsiveFontSize(40)} color="#00FF87" />
+              </View>
+              
+              <Text style={styles.modalTitle}>¡Cuenta Creada Exitosamente!</Text>
+              
+              <Text style={styles.modalText}>
+                Tu cuenta ha sido creada exitosamente. Bienvenido a Espacios Creativos.{'\n\n'}
+                Ahora puedes iniciar sesión y comenzar a explorar todas las funcionalidades.
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.replace('/(auth)/login');
+                }}
+              >
+                <Text style={styles.modalButtonText}>Continuar al Login</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
