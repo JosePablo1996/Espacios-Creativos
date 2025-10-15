@@ -10,6 +10,7 @@ import {
   Dimensions,
   Modal,
   TouchableWithoutFeedback,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase, Database } from '@/lib/supabase';
@@ -28,6 +29,8 @@ export default function BookingsScreen() {
   const [mounted, setMounted] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showDeleteMessage, setShowDeleteMessage] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
   const { user, isAdmin } = useAuth();
   const router = useRouter();
 
@@ -128,6 +131,25 @@ export default function BookingsScreen() {
     }
   };
 
+  const showDeleteNotification = () => {
+    setShowDeleteMessage(true);
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.delay(3000),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowDeleteMessage(false);
+    });
+  };
+
   const openCancelModal = (booking: Booking) => {
     // Validaciones antes de abrir el modal
     if (booking.status !== 'pending') {
@@ -170,12 +192,8 @@ export default function BookingsScreen() {
       // Actualizar la lista localmente sin recargar
       setBookings(prev => prev.filter(booking => booking.id !== selectedBooking.id));
       
-      // Mostrar mensaje de éxito con estilo neon
-      Alert.alert(
-        '✅ Cancelación Exitosa',
-        'La reserva ha sido cancelada correctamente',
-        [{ text: 'Aceptar', style: 'default' }]
-      );
+      // Mostrar mensaje flotante de éxito
+      showDeleteNotification();
       
       closeCancelModal();
     } catch (error: any) {
@@ -474,6 +492,16 @@ export default function BookingsScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Mensaje Flotante de Eliminación Exitosa */}
+      {showDeleteMessage && (
+        <Animated.View style={[styles.successMessage, { opacity: fadeAnim }]}>
+          <View style={styles.successContent}>
+            <CheckCircle size={24} color="#000000" />
+            <Text style={styles.successText}>¡Reserva cancelada exitosamente!</Text>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -944,5 +972,39 @@ const styles = StyleSheet.create({
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  // Mensaje Flotante de Eliminación Exitosa
+  successMessage: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: '#00FF87', // Color neon verde brillante
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 3,
+    borderColor: '#00FFFF', // Borde cyan para más contraste
+    shadowColor: '#00FF87',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 15,
+    zIndex: 1000,
+  },
+  successContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  successText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#000000', // Texto negro para máximo contraste
+    textAlign: 'center',
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    letterSpacing: 0.5,
   },
 });
