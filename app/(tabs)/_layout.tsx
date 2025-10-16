@@ -387,84 +387,122 @@ export default function TabLayout() {
     }
   };
 
-  // Función para obtener el icono del dispositivo
-  const getDeviceIcon = () => {
-    if (isMobile) return Smartphone;
-    if (isTablet) return Tablet;
-    return Monitor;
-  };
-
-  // Función para obtener el texto del dispositivo
-  const getDeviceText = () => {
-    if (isMobile) return '📱 Móvil';
-    if (isTablet) return '📟 Tablet';
-    return '💻 Desktop';
-  };
-
-  // Función para obtener el color del dispositivo
-  const getDeviceColor = () => {
-    if (isMobile) return '#FFB800';
-    if (isTablet) return '#00FFFF';
-    return '#00FF87';
-  };
-
-  // Función para obtener información del sistema operativo - MEJORADA para Android
-  const getOSInfo = () => {
-    if (Platform.OS === 'web') {
-      return 'Windows 11'; // Para versión web
-    } else if (Platform.OS === 'android') {
-      // Detectar versión de Android por nombre en lugar del SDK
-      const androidVersion = getAndroidVersionName(Platform.Version);
-      return `Android ${androidVersion}`;
-    } else if (Platform.OS === 'ios') {
-      return `iOS ${Platform.Version}`; // Para iOS
-    }
-    return `${Platform.OS} ${Platform.Version}`; // Para otras plataformas
-  };
-
-  // Función para obtener el nombre de la versión de Android
-  const getAndroidVersionName = (versionCode: string | number): string => {
-    const version = typeof versionCode === 'string' ? parseFloat(versionCode) : versionCode;
-    
-    const versionMap: { [key: number]: string } = {
-      14: '14',
-      13: '13 (Tiramisu)',
-      12: '12 (Snow Cone)',
-      11: '11 (Red Velvet Cake)',
-      10: '10 (Queen Cake)',
-      9: '9 (Pie)',
-      8: '8 (Oreo)',
-      7: '7 (Nougat)',
-      6: '6 (Marshmallow)',
-      5: '5 (Lollipop)',
-      4.4: '4.4 (KitKat)',
-      4.1: '4.1 (Jelly Bean)',
-      4: '4 (Ice Cream Sandwich)',
-    };
-
-    // Buscar la versión más cercana
-    const exactVersion = versionMap[version];
-    if (exactVersion) {
-      return exactVersion;
-    }
-
-    // Si no encuentra exacto, buscar la versión base
-    const baseVersion = Math.floor(version);
-    const baseVersionName = versionMap[baseVersion];
-    if (baseVersionName) {
-      return baseVersionName.split(' ')[0]; // Devolver solo el número si no hay nombre específico
-    }
-
-    return `API ${version}`; // Fallback al código de API
-  };
-
   const userName = profile?.full_name || 'Jose Pablo Miranda Quintanilla';
   const userEmail = profile?.email || user?.email || 'jmirandaquintanilla@gmail.com';
   const { firstName, lastName } = getUserNameParts(userName);
-  const DeviceIcon = getDeviceIcon();
-  const deviceText = getDeviceText();
-  const deviceColor = getDeviceColor();
-  const osInfo = getOSInfo();
+
+  // Modal del Avatar (solo para móvil) - MEJORADO con diseño premium
+  const AvatarModal = () => (
+    <Modal
+      visible={avatarModalVisible}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={closeAvatarModal}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={closeAvatarModal}
+      >
+        <Animated.View 
+          style={[
+            styles.modalOverlay,
+            {
+              opacity: avatarModalAnim
+            }
+          ]}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            style={styles.modalContentContainer}
+            onPress={closeAvatarModal}
+          >
+            <Animated.View 
+              style={[
+                styles.avatarModalContent,
+                {
+                  transform: [
+                    {
+                      scale: avatarModalAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1]
+                      })
+                    }
+                  ],
+                  opacity: avatarModalAnim
+                }
+              ]}
+            >
+              <TouchableOpacity 
+                style={styles.avatarModalCloseButton}
+                onPress={closeAvatarModal}
+              >
+                <View style={styles.avatarModalCloseBackground}>
+                  <X size={20} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Header del Modal del Avatar - MEJORADO */}
+              <View style={styles.avatarModalHeader}>
+                <View style={styles.avatarModalImageContainer}>
+                  <View style={styles.avatarModalImageGlow} />
+                  <Image 
+                    source={userAvatar} 
+                    style={styles.avatarModalImage}
+                    onError={(error) => console.log('Error loading image:', error.nativeEvent.error)}
+                  />
+                  <View style={styles.avatarModalOnlineStatus} />
+                </View>
+                <Text style={styles.avatarModalTitle}>Perfil de Usuario</Text>
+                <Text style={styles.avatarModalSubtitle}>Información personal</Text>
+              </View>
+
+              {/* Contenido del Modal del Avatar - MEJORADO */}
+              <View style={styles.avatarModalBody}>
+                {/* Información del Nombre Completo */}
+                <View style={styles.avatarInfoSection}>
+                  <View style={[styles.avatarInfoIconContainer, { backgroundColor: 'rgba(0, 255, 135, 0.1)' }]}>
+                    <UserIcon size={24} color="#00FF87" />
+                  </View>
+                  <View style={styles.avatarInfoTextContainer}>
+                    <Text style={styles.avatarInfoLabel}>Nombre Completo</Text>
+                    <Text style={[styles.avatarInfoValue, styles.neonTextGreen]}>{userName}</Text>
+                  </View>
+                </View>
+
+                {/* Separador decorativo */}
+                <View style={styles.avatarSectionDivider} />
+
+                {/* Información del Correo Electrónico */}
+                <View style={styles.avatarInfoSection}>
+                  <View style={[styles.avatarInfoIconContainer, { backgroundColor: 'rgba(0, 255, 255, 0.1)' }]}>
+                    <Mail size={24} color="#00FFFF" />
+                  </View>
+                  <View style={styles.avatarInfoTextContainer}>
+                    <Text style={styles.avatarInfoLabel}>Correo Electrónico</Text>
+                    <Text style={[styles.avatarInfoValue, styles.neonTextCyan]}>{userEmail}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Footer del Modal del Avatar - MEJORADO con leyenda del desarrollador */}
+              <View style={styles.avatarModalFooter}>
+                <View style={styles.avatarFooterContent}>
+                  <View style={styles.avatarFooterHeartContainer}>
+                    <Heart size={16} color="#FF6B9D" fill="#FF6B9D" />
+                  </View>
+                  <Text style={styles.avatarModalFooterText}>
+                    Desarrollado con ♥️ por{"\n"}
+                    <Text style={styles.avatarModalDeveloper}>Jose Pablo Miranda Quintanilla</Text>
+                  </Text>
+                </View>
+              </View>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+  );
 
   // Modal de Información del Sistema
   const InfoModal = () => (
@@ -549,55 +587,6 @@ export default function TabLayout() {
                     </View>
                   </View>
                 </View>
-
-                <View style={styles.infoItem}>
-                  <View style={styles.infoItemLeft}>
-                    <Text style={styles.infoItemLabel}>Sistema Operativo</Text>
-                  </View>
-                  <View style={styles.infoItemRight}>
-                    <View style={[styles.infoBadge, { backgroundColor: 'rgba(255, 107, 157, 0.1)', borderColor: '#FF6B9D' }]}>
-                      <Text style={[styles.infoBadgeText, { color: '#FF6B9D' }]}>{osInfo}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.infoItem}>
-                  <View style={styles.infoItemLeft}>
-                    <Text style={styles.infoItemLabel}>Tipo de Dispositivo</Text>
-                  </View>
-                  <View style={styles.infoItemRight}>
-                    <View style={[styles.deviceInfo, { borderColor: deviceColor }]}>
-                      <DeviceIcon size={18} color={deviceColor} />
-                      <Text style={[styles.deviceText, { color: deviceColor }]}>{deviceText}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.infoItem}>
-                  <View style={styles.infoItemLeft}>
-                    <Text style={styles.infoItemLabel}>Resolución de Pantalla</Text>
-                  </View>
-                  <View style={styles.infoItemRight}>
-                    <View style={[styles.resolutionBadge, { backgroundColor: 'rgba(0, 255, 255, 0.1)', borderColor: '#00FFFF' }]}>
-                      <Text style={[styles.resolutionText, { color: '#00FFFF' }]}>
-                        {Math.round(width)}×{Math.round(height)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.infoItem}>
-                  <View style={styles.infoItemLeft}>
-                    <Text style={styles.infoItemLabel}>Plataforma</Text>
-                  </View>
-                  <View style={styles.infoItemRight}>
-                    <View style={[styles.platformBadge, { backgroundColor: 'rgba(255, 107, 157, 0.1)', borderColor: '#FF6B9D' }]}>
-                      <Text style={[styles.platformText, { color: '#FF6B9D' }]}>
-                        {Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : 'Web'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
               </View>
 
               {/* Footer del Modal */}
@@ -608,134 +597,6 @@ export default function TabLayout() {
                 <Text style={styles.infoModalFooterText}>
                   Desarrollado con pasión por{"\n"}
                   <Text style={styles.infoModalDeveloper}>Jose Pablo Miranda Quintanilla</Text>
-                </Text>
-              </View>
-            </Animated.View>
-          </TouchableOpacity>
-        </Animated.View>
-      </TouchableOpacity>
-    </Modal>
-  );
-
-  // Modal del Avatar (solo para móvil)
-  const AvatarModal = () => (
-    <Modal
-      visible={avatarModalVisible}
-      animationType="fade"
-      transparent={true}
-      onRequestClose={closeAvatarModal}
-    >
-      <TouchableOpacity 
-        style={styles.modalOverlay}
-        activeOpacity={1}
-        onPress={closeAvatarModal}
-      >
-        <Animated.View 
-          style={[
-            styles.modalOverlay,
-            {
-              opacity: avatarModalAnim
-            }
-          ]}
-        >
-          <TouchableOpacity 
-            activeOpacity={1}
-            style={styles.modalContentContainer}
-            onPress={closeAvatarModal}
-          >
-            <Animated.View 
-              style={[
-                styles.avatarModalContent,
-                {
-                  transform: [
-                    {
-                      scale: avatarModalAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.8, 1]
-                      })
-                    }
-                  ],
-                  opacity: avatarModalAnim
-                }
-              ]}
-            >
-              <TouchableOpacity 
-                style={styles.avatarModalCloseButton}
-                onPress={closeAvatarModal}
-              >
-                <View style={styles.avatarModalCloseBackground}>
-                  <X size={20} color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-
-              {/* Header del Modal del Avatar */}
-              <View style={styles.avatarModalHeader}>
-                <View style={styles.avatarModalImageContainer}>
-                  <Image 
-                    source={userAvatar} 
-                    style={styles.avatarModalImage}
-                    onError={(error) => console.log('Error loading image:', error.nativeEvent.error)}
-                  />
-                  <View style={styles.avatarModalOnlineStatus} />
-                </View>
-                <Text style={styles.avatarModalTitle}>Perfil de Usuario</Text>
-                <Text style={styles.avatarModalSubtitle}>Información personal</Text>
-              </View>
-
-              {/* Contenido del Modal del Avatar */}
-              <View style={styles.avatarModalBody}>
-                <View style={styles.avatarInfoItem}>
-                  <View style={styles.avatarInfoItemLeft}>
-                    <UserIcon size={20} color="#00FF87" />
-                    <Text style={[styles.avatarInfoItemLabel, { color: '#00FF87' }]}>Nombre Completo</Text>
-                  </View>
-                  <View style={styles.avatarInfoItemRight}>
-                    <Text style={[styles.avatarInfoItemValue, { color: '#00FF87' }]}>{userName}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.avatarInfoItem}>
-                  <View style={styles.avatarInfoItemLeft}>
-                    <Mail size={20} color="#00FFFF" />
-                    <Text style={[styles.avatarInfoItemLabel, { color: '#00FFFF' }]}>Correo Electrónico</Text>
-                  </View>
-                  <View style={styles.avatarInfoItemRight}>
-                    <Text style={[styles.avatarInfoItemValue, { color: '#00FFFF' }]}>{userEmail}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.avatarInfoItem}>
-                  <View style={styles.avatarInfoItemLeft}>
-                    <Crown size={20} color="#FFB800" />
-                    <Text style={[styles.avatarInfoItemLabel, { color: '#FFB800' }]}>Rol</Text>
-                  </View>
-                  <View style={styles.avatarInfoItemRight}>
-                    <View style={[styles.avatarRoleBadge, { backgroundColor: isAdmin ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 255, 255, 0.1)' }]}>
-                      <Text style={[styles.avatarRoleText, { color: isAdmin ? '#FFD700' : '#00FFFF' }]}>
-                        {isAdmin ? 'Administrador' : 'Usuario'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.avatarInfoItem}>
-                  <View style={styles.avatarInfoItemLeft}>
-                    <DeviceIcon size={20} color={deviceColor} />
-                    <Text style={[styles.avatarInfoItemLabel, { color: deviceColor }]}>Dispositivo</Text>
-                  </View>
-                  <View style={styles.avatarInfoItemRight}>
-                    <Text style={[styles.avatarInfoItemValue, { color: deviceColor }]}>{deviceText}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Footer del Modal del Avatar */}
-              <View style={styles.avatarModalFooter}>
-                <View style={styles.avatarFooterHeartContainer}>
-                  <Heart size={16} color="#FF6B9D" fill="#FF6B9D" />
-                </View>
-                <Text style={styles.avatarModalFooterText}>
-                  Sesión activa en <Text style={{ color: '#FF6B9D' }}>{deviceText.toLowerCase()}</Text>
                 </Text>
               </View>
             </Animated.View>
@@ -881,39 +742,34 @@ export default function TabLayout() {
                     <View style={styles.avatarGlow} />
                   </TouchableOpacity>
 
-                  {/* Información del usuario MEJORADA */}
+                  {/* Información del usuario MEJORADA - Nombre y apellido en líneas separadas */}
                   <View style={styles.userInfo}>
-                    {/* Nombre y apellido en líneas separadas con colores neón diferentes */}
+                    {/* Nombre y apellido en líneas separadas */}
                     <View style={styles.userNameContainer}>
                       <UserIcon size={16} color="#00FF87" style={styles.userNameIcon} />
                       <View style={styles.nameLinesContainer}>
-                        <Text style={styles.firstName} numberOfLines={1}>
+                        <Text style={[styles.firstName, styles.neonTextGreen]} numberOfLines={1}>
                           {firstName}
                         </Text>
                         {lastName ? (
-                          <Text style={styles.lastName} numberOfLines={1}>
+                          <Text style={[styles.lastName, styles.neonTextCyan]} numberOfLines={1}>
                             {lastName}
                           </Text>
                         ) : null}
                       </View>
                     </View>
                     
+                    {/* Correo electrónico CON COLOR NEÓN */}
                     <View style={styles.userEmailContainer}>
-                      <Mail size={14} color="#00FFFF" style={styles.userEmailIcon} />
-                      <Text style={styles.userEmail} numberOfLines={1}>
+                      <Mail size={14} color="#FFB800" style={styles.userEmailIcon} />
+                      <Text style={[styles.userEmail, styles.neonTextYellow]} numberOfLines={1}>
                         {userEmail}
                       </Text>
                     </View>
 
-                    {/* Badges de información del usuario */}
-                    <View style={styles.userBadges}>
-                      {isAdmin && (
-                        <View style={styles.adminBadge}>
-                          <Crown size={14} color="#FFD700" />
-                          <Text style={styles.adminBadgeText}>Administrador</Text>
-                        </View>
-                      )}
-                      <View style={styles.statusBadge}>
+                    {/* Estado en línea */}
+                    <View style={styles.userStatusContainer}>
+                      <View style={styles.statusIndicator}>
                         <View style={styles.statusDot} />
                         <Text style={styles.statusText}>En línea</Text>
                       </View>
@@ -1499,63 +1355,44 @@ const styles = StyleSheet.create({
   },
   userNameContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   userNameIcon: {
     marginRight: 8,
+    marginTop: 2,
   },
   nameLinesContainer: {
     flex: 1,
   },
   firstName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#00FF87',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   lastName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#00FFFF',
     letterSpacing: 0.3,
   },
   userEmailContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   userEmailIcon: {
     marginRight: 6,
   },
   userEmail: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
     flex: 1,
   },
-  userBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  adminBadge: {
+  userStatusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
-  adminBadgeText: {
-    fontSize: 11,
-    color: '#FFD700',
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  statusBadge: {
+  statusIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 255, 135, 0.1)',
@@ -1575,6 +1412,28 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     color: '#00FF87',
+    fontWeight: '600',
+  },
+  // Estilos de texto neón MEJORADOS - AGREGADO COLOR AMARILLO NEÓN
+  neonTextGreen: {
+    color: '#00FF87',
+    textShadowColor: '#00FF87',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+    fontWeight: 'bold',
+  },
+  neonTextCyan: {
+    color: '#00FFFF',
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+    fontWeight: '600',
+  },
+  neonTextYellow: {
+    color: '#FFB800',
+    textShadowColor: '#FFB800',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
     fontWeight: '600',
   },
   closeButton: {
@@ -1888,40 +1747,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  deviceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-  },
-  deviceText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  resolutionBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  resolutionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  platformBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  platformText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   infoModalFooter: {
     paddingVertical: 25,
     paddingHorizontal: 30,
@@ -1944,21 +1769,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 13,
   },
-  // Estilos del Modal del Avatar MEJORADOS
+  // Estilos del Modal del Avatar MEJORADOS - DISEÑO PREMIUM
   avatarModalContent: {
     backgroundColor: '#0A0A0A',
     borderRadius: 24,
     padding: 0,
-    width: Platform.OS === 'web' ? 450 : Math.min(450, width * 0.9),
-    maxHeight: Platform.OS === 'web' ? '80%' : '85%',
+    width: Platform.OS === 'web' ? 420 : Math.min(420, width * 0.88),
+    maxHeight: Platform.OS === 'web' ? '75%' : '80%',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
+    borderColor: 'rgba(0, 255, 135, 0.2)',
+    shadowColor: '#00FF87',
     shadowOffset: {
       width: 0,
       height: 20,
     },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 30,
     elevation: 30,
     overflow: 'hidden',
@@ -1977,23 +1802,35 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   avatarModalHeader: {
-    paddingVertical: 35,
+    paddingVertical: 40,
     paddingHorizontal: 30,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(0, 255, 135, 0.2)',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 255, 135, 0.05)',
+    backgroundColor: 'rgba(0, 255, 135, 0.08)',
+    position: 'relative',
+    overflow: 'hidden',
   },
   avatarModalImageContainer: {
     position: 'relative',
     marginBottom: 20,
+  },
+  avatarModalImageGlow: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 70,
+    backgroundColor: 'rgba(0, 255, 135, 0.15)',
+    opacity: 0.6,
   },
   avatarModalImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: 'rgba(0, 255, 135, 0.6)',
+    borderColor: 'rgba(0, 255, 135, 0.8)',
   },
   avatarModalOnlineStatus: {
     position: 'absolute',
@@ -2020,78 +1857,101 @@ const styles = StyleSheet.create({
     color: '#00FF87',
     marginBottom: 8,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 255, 135, 0.3)',
+    textShadowColor: 'rgba(0, 255, 135, 0.4)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    textShadowRadius: 15,
+    letterSpacing: 0.5,
   },
   avatarModalSubtitle: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   avatarModalBody: {
     padding: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
-  avatarInfoItem: {
+  // Estilos MEJORADOS para la información del avatar
+  avatarInfoSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
+    alignItems: 'flex-start',
+    paddingVertical: 22,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  avatarInfoItemLeft: {
-    flexDirection: 'row',
+  avatarInfoIconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  avatarInfoTextContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
-  avatarInfoItemRight: {
-    marginLeft: 15,
-  },
-  avatarInfoItemLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 12,
-    textShadowColor: 'rgba(255, 255, 255, 0.1)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
-  },
-  avatarInfoItemValue: {
-    fontSize: 16,
+  avatarInfoLabel: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
     fontWeight: '500',
-    textShadowColor: 'rgba(255, 255, 255, 0.1)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
+    marginBottom: 6,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  avatarRoleBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  avatarRoleText: {
-    fontSize: 14,
+  avatarInfoValue: {
+    fontSize: 17,
     fontWeight: '600',
-    textShadowColor: 'rgba(255, 255, 255, 0.1)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 5,
+    letterSpacing: 0.3,
+    lineHeight: 22,
+  },
+  avatarSectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 255, 135, 0.1)',
+    marginVertical: 10,
+    marginHorizontal: 10,
   },
   avatarModalFooter: {
-    paddingVertical: 25,
+    paddingVertical: 28,
     paddingHorizontal: 30,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: 'rgba(255, 107, 157, 0.2)',
+    backgroundColor: 'rgba(255, 107, 157, 0.08)',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 157, 0.05)',
+  },
+  avatarFooterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarFooterHeartContainer: {
-    marginBottom: 12,
+    marginRight: 12,
   },
   avatarModalFooterText: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
     lineHeight: 18,
+    letterSpacing: 0.3,
+  },
+  avatarModalDeveloper: {
+    color: '#FF6B9D',
+    fontWeight: '600',
+    fontSize: 14,
+    textShadowColor: 'rgba(255, 107, 157, 0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   // Estilos del Modal de Confirmación de Cierre de Sesión
   logoutConfirmContent: {
