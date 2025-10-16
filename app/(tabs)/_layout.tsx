@@ -29,6 +29,103 @@ const validRoutes = {
 
 type ValidRouteKey = keyof typeof validRoutes;
 
+// DETECCIÓN REAL DEL SISTEMA OPERATIVO Y DISPOSITIVO
+const getRealOperatingSystem = () => {
+  if (Platform.OS === 'web') {
+    // Detección REAL del sistema operativo en web
+    const userAgent = navigator.userAgent;
+    
+    if (userAgent.includes('Windows')) {
+      // Detectar versión específica de Windows
+      if (userAgent.includes('Windows NT 10.0')) return 'Windows 10';
+      if (userAgent.includes('Windows NT 11.0')) return 'Windows 11';
+      if (userAgent.includes('Windows NT 6.3')) return 'Windows 8.1';
+      if (userAgent.includes('Windows NT 6.2')) return 'Windows 8';
+      if (userAgent.includes('Windows NT 6.1')) return 'Windows 7';
+      return 'Windows';
+    }
+    
+    if (userAgent.includes('Mac')) return 'macOS';
+    if (userAgent.includes('Linux')) return 'Linux';
+    if (userAgent.includes('Android')) return 'Android';
+    if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) return 'iOS';
+    
+    return 'Sistema Operativo Desconocido';
+  }
+  
+  // Para React Native nativo
+  return Platform.OS === 'ios' ? 'iOS' : 
+         Platform.OS === 'android' ? 'Android' : 
+         Platform.OS;
+};
+
+const getRealDeviceType = () => {
+  if (Platform.OS === 'web') {
+    // Detección REAL del tipo de dispositivo en web
+    const userAgent = navigator.userAgent;
+    
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+    const isTablet = /iPad|Tablet|Tab|KFAPWI/i.test(userAgent) || 
+                    (userAgent.includes('Mac') && 'ontouchend' in document);
+    
+    if (isTablet) return 'Tablet';
+    if (isMobile) return 'Teléfono Móvil';
+    
+    // Si no es móvil ni tablet, es desktop
+    return 'Computadora de Escritorio';
+  }
+  
+  // Para React Native nativo - usar dimensiones de pantalla
+  if (width >= 1024) return 'Tablet';
+  if (width >= 768) return 'Tablet';
+  return 'Móvil';
+};
+
+const getRealPlatformType = () => {
+  if (Platform.OS === 'web') {
+    return 'Desktop Web'; // Siempre mostrar "Desktop Web" en versión web
+  }
+  
+  // Para React Native nativo - siempre mostrar "Solo móvil"
+  return 'Móvil';
+};
+
+// Función para obtener el icono de la plataforma
+const getPlatformIcon = (platformType: string) => {
+  if (platformType.includes('Desktop') || platformType.includes('Web')) return Monitor;
+  if (platformType.includes('Tablet')) return Tablet;
+  if (platformType.includes('móvil')) return Smartphone;
+  return Smartphone;
+};
+
+// Función para obtener el color de la plataforma
+const getPlatformColor = (platformType: string) => {
+  if (platformType.includes('Desktop') || platformType.includes('Web')) return '#00FFFF';
+  if (platformType.includes('Tablet')) return '#FFB800';
+  if (platformType.includes('móvil')) return '#00FF87';
+  return '#FF6B9D';
+};
+
+// Función para obtener el icono del sistema operativo
+const getOSIcon = (os: string) => {
+  if (os.includes('Windows')) return Monitor;
+  if (os.includes('macOS')) return Monitor;
+  if (os.includes('Linux')) return Monitor;
+  if (os.includes('Android')) return Smartphone;
+  if (os.includes('iOS')) return Smartphone;
+  return Monitor;
+};
+
+// Función para obtener el color del sistema operativo
+const getOSColor = (os: string) => {
+  if (os.includes('Windows')) return '#00FFFF';
+  if (os.includes('macOS')) return '#FF6B9D';
+  if (os.includes('Linux')) return '#FFB800';
+  if (os.includes('Android')) return '#00FF87';
+  if (os.includes('iOS')) return '#007AFF';
+  return '#CCCCCC';
+};
+
 export default function TabLayout() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [fabMenuVisible, setFabMenuVisible] = useState(false);
@@ -56,6 +153,15 @@ export default function TabLayout() {
   const isTablet = width >= 768;
   const isDesktop = width >= 1024;
   const isMobile = width < 768;
+
+  // Detección REAL de plataforma y sistema operativo
+  const platformType = getRealPlatformType();
+  const PlatformIcon = getPlatformIcon(platformType);
+  const platformColor = getPlatformColor(platformType);
+  const operatingSystem = getRealOperatingSystem();
+  const OSIcon = getOSIcon(operatingSystem);
+  const OSColor = getOSColor(operatingSystem);
+  const deviceType = getRealDeviceType();
 
   // Para tablets y teléfonos, usar menú desplegable, para desktop usar FAB
   const useDrawerMenu = !isDesktop;
@@ -504,7 +610,7 @@ export default function TabLayout() {
     </Modal>
   );
 
-  // Modal de Información del Sistema
+  // Modal de Información del Sistema - ACTUALIZADO con los cambios solicitados
   const InfoModal = () => (
     <Modal
       visible={infoModalVisible}
@@ -564,8 +670,38 @@ export default function TabLayout() {
                 <Text style={styles.infoModalSubtitle}>Detalles técnicos de la aplicación</Text>
               </View>
 
-              {/* Contenido del Modal */}
+              {/* Contenido del Modal - ACTUALIZADO con los cambios solicitados */}
               <View style={styles.infoModalBody}>
+                {/* Información de la Plataforma - ACTUALIZADO */}
+                <View style={styles.infoItem}>
+                  <View style={styles.infoItemLeft}>
+                    <View style={styles.infoItemLabelContainer}>
+                      <PlatformIcon size={16} color={platformColor} style={styles.infoItemIcon} />
+                      <Text style={styles.infoItemLabel}>Plataforma</Text>
+                    </View>
+                  </View>
+                  <View style={styles.infoItemRight}>
+                    <View style={[styles.infoBadge, { backgroundColor: `${platformColor}20`, borderColor: platformColor }]}>
+                      <Text style={[styles.infoBadgeText, { color: platformColor }]}>{platformType}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Información del Sistema Operativo - DETECCIÓN REAL */}
+                <View style={styles.infoItem}>
+                  <View style={styles.infoItemLeft}>
+                    <View style={styles.infoItemLabelContainer}>
+                      <OSIcon size={16} color={OSColor} style={styles.infoItemIcon} />
+                      <Text style={styles.infoItemLabel}>Sistema Operativo</Text>
+                    </View>
+                  </View>
+                  <View style={styles.infoItemRight}>
+                    <View style={[styles.infoBadge, { backgroundColor: `${OSColor}20`, borderColor: OSColor }]}>
+                      <Text style={[styles.infoBadgeText, { color: OSColor }]}>{operatingSystem}</Text>
+                    </View>
+                  </View>
+                </View>
+
                 <View style={styles.infoItem}>
                   <View style={styles.infoItemLeft}>
                     <Text style={styles.infoItemLabel}>Versión de la App</Text>
@@ -589,13 +725,13 @@ export default function TabLayout() {
                 </View>
               </View>
 
-              {/* Footer del Modal */}
+              {/* Footer del Modal - ACTUALIZADO con la leyenda del desarrollador */}
               <View style={styles.infoModalFooter}>
                 <View style={styles.footerHeartContainer}>
                   <Heart size={16} color="#FF6B9D" fill="#FF6B9D" />
                 </View>
                 <Text style={styles.infoModalFooterText}>
-                  Desarrollado con pasión por{"\n"}
+                  Desarrollado con ♥️ por{"\n"}
                   <Text style={styles.infoModalDeveloper}>Jose Pablo Miranda Quintanilla</Text>
                 </Text>
               </View>
@@ -936,7 +1072,7 @@ export default function TabLayout() {
                     <Heart size={16} color="#FF6B9D" fill="#FF6B9D" />
                   </View>
                   <Text style={styles.watermarkText}>
-                    Desarrollado con pasión por{"\n"}
+                    Desarrollado con ♥️ por{"\n"}
                     <Text style={styles.developerName}>Jose Pablo Miranda Quintanilla</Text>
                   </Text>
                 </View>
@@ -1223,6 +1359,7 @@ export default function TabLayout() {
   );
 }
 
+// Los estilos se mantienen exactamente igual que en la versión anterior
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1728,6 +1865,13 @@ const styles = StyleSheet.create({
   },
   infoItemLeft: {
     flex: 1,
+  },
+  infoItemLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoItemIcon: {
+    marginRight: 8,
   },
   infoItemLabel: {
     fontSize: 14,
